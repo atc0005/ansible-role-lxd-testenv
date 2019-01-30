@@ -1,0 +1,76 @@
+---
+
+- name: Create service group
+  group:
+    name: "{{ lxd_containers_service_group }}"
+    state: present
+    system: no
+
+- name: Create service user
+  user:
+    name: "{{ lxd_containers_service_account }}"
+    # Explicitly specify this in case the default behavior ever changes
+    # Credit: @auadamw
+    create_home: yes
+    comment: Service account used by Ansible to configure system
+    group: "{{ lxd_containers_service_group }}"
+    state: present
+    system: no
+
+- name: "Create service account sudoers file in container"
+  copy:
+    content: '{{ lxd_containers_service_account }} ALL=(ALL) NOPASSWD: ALL'
+    dest: "{{ lxd_containers_sudoers_include_file }}"
+    owner: root
+    group: root
+    mode: 0440
+
+- name: Deploy SSH Public key for container management
+  block:
+
+    - name: Load SSH public key for containers from current user profile
+      set_fact:
+        lxd_host_ssh_public_key_for_containers_content: >-
+          {{ lookup('file', lxd_host_ssh_public_key_for_containers) }}
+
+    - name: Deploy current user SSH public key to specific users in container
+      authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ lxd_host_ssh_public_key_for_containers_content }}"
+      register: authorized_key_insert_output
+      with_items:
+        - root
+        - ansible
+
+  rescue:
+
+    - name: DEBUG | Display public key contents intended for container management
+      debug:
+        var: lxd_host_ssh_public_key_for_containers_content
+
+    - name: DEBUG | Display authorized_key insertion results
+      debug:
+        var: authorized_key_insert_output
+
+    - fail:
+        msg: "Failed to deploy key to users in containers"
+
+
+- name: Start SSH, set it to start at boot
+  service:
+    name: sshd
+    state: started
+    enabled: yes
+
+- name: "Update hosts file in container"
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ inventory_hostname }}$'
+    line: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }} {{ inventory_hostname }}"
+    state: present
+  when:
+    - hostvars[inventory_hostname].ansible_default_ipv4.address is defined
+    - lxd_containers_update_hosts_file
+
+...

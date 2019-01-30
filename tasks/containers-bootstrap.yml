@@ -1,0 +1,29 @@
+---
+
+- name: Confirm python is installed in container
+  raw: "test -e {{ python_path }}"
+  register: python_install_check
+  failed_when: python_install_check.rc not in [0, 1]
+  changed_when: false
+
+# Triggered when -vvvv is specified
+# https://docs.ansible.com/ansible/latest/modules/debug_module.html
+- name: DEBUG | Display all known facts about host
+  debug:
+    var: hostvars[inventory_hostname]
+    verbosity: "4"
+
+# Triggered when -vv is specified
+- name: DEBUG | Show python check results
+  debug:
+    var: python_install_check.stdout
+    verbosity: "2"
+
+# Only occurs with containers without Python
+- name: Install Python
+  # TODO: not sure I have the syntax right here
+  raw: "{{ python_install_command | default(default_python_install_command) }}"
+  when:
+    - python_install_check.rc == 1
+
+...

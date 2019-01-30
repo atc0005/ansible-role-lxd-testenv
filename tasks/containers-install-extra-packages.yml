@@ -1,0 +1,9 @@
+---
+
+- name: Install extra packages
+  package:
+    name: "{{ lxd_containers_packages_extra }}"
+    state: present
+
+
+...

@@ -1,0 +1,86 @@
+---
+
+# vim: ts=2:sw=2:et:ft=ansible
+# -*- mode: ansible; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=ansible insertSpaces=true tabSize=2
+
+
+# Host copy of file. Updated to reflect host keys of all containers.
+lxd_host_ssh_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
+
+# By default, update the $HOME/.ssh/known_hosts file on the host with host
+# keys from all containers.
+lxd_host_update_known_hosts_file: true
+
+# Flag used to control whether the `/etc/hosts` file on the LXD container host
+# is updated to include new container name/IP pairs
+lxd_host_update_etc_hosts_file: true
+
+# Keys specific/dedicated to this role
+
+lxd_host_ssh_private_key_for_containers: "{{ lookup('env','HOME') + '/.ssh/id_ed25519' }}"
+lxd_host_ssh_public_key_for_containers: "{{ lxd_host_ssh_private_key_for_containers + '.pub' }}"
+
+# by default this role serves as a setup tool, but this can be
+# overridden to tear down the test environment
+lxd_host_remove_container_settings: false
+lxd_host_remove_containers: false
+
+# Should the /etc/hosts file on each container be updated to list all other
+# containers? If this is not enabled, then built-in dnsmasq support will be
+# used to provide name resolution between containers.
+lxd_containers_update_hosts_file: false
+
+# Server listed in the Ansible module examples
+lxd_containers_image_server: "https://images.linuxcontainers.org"
+
+# Assume that containers should be created when this role is used
+# unless overridden
+lxd_containers_create: true
+
+# Flag that controls whether Python, sudo and other packages are installed as
+# part of preparing new containers for management by Ansible.
+lxd_containers_bootstrap: true
+
+# Create service account, groups, enable SSH at boot, etc
+lxd_containers_configure: true
+
+lxd_containers_packages_required:
+  - "openssh-server"
+  - "sudo"
+lxd_containers_packages_extra:
+  # mainly a placeholder, but useful on its own
+  - "nano"
+
+# All profiles listed here will be applied to newly created containers
+lxd_containers_profiles:
+  - "default"
+
+# https://docs.docker.com/config/daemon/
+docker_main_config_file: "/etc/docker/daemon.json"
+lxd_containers_docker_config_file_template: "docker-daemon-config.json.j2"
+
+# See Docker storage drivers for valid options, BUT know that some may not
+# work within a LXD/LXD environment. The default value chosen here is 'vfs' in
+# order to provide the broadest compatibility with backing storage filesystems,
+# but this default option should be overridden by the role user if performance
+# is found to not be sufficient. Aside from 'vfs', the 'overlay' Docker storage
+# driver has been found to be compatible, provided that you are not using ZFS
+# as the the LXD storage option.
+# https://github.com/lxc/lxd/issues/2305
+# https://docs.docker.com/storage/storagedriver/select-storage-driver/
+lxd_containers_docker_storage_driver: "vfs"
+
+lxd_containers_sudoers_include_file: "/etc/sudoers.d/ansible"
+lxd_containers_service_account: "ansible"
+lxd_containers_service_group: "ansible"
+
+# Default state is setting up a test environment
+state: "create"
+
+default_python_install_command: "if [[ $? -ne 0 ]]; then if [[ -f /usr/bin/apt-get ]]; then apt-get install -y python; fi; if [[ -f /usr/bin/yum ]]; then yum install -y python; fi; fi"
+
+# Location of Python 2 interpreter; needed for bootstrap testing purposes
+python_path: "/usr/bin/python"
+
+...

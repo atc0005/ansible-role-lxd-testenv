@@ -1,0 +1,29 @@
+---
+
+# Purpose: Install Docker related configuration in containers that may be used
+# for Docker testing. A separate role is used to actually install Docker and
+# related packages into those containers
+
+- name: DOCKER | Create config file directory
+  become: yes
+  file:
+    state: directory
+    dest: "{{ docker_main_config_file | dirname }}"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: DOCKER | DEBUG | Display chosen storage driver
+  debug:
+    var: lxd_containers_docker_storage_driver
+
+- name: DOCKER | Deploy base config file
+  become: yes
+  template:
+    src: '{{ lxd_containers_docker_config_file_template }}'
+    dest: "{{ docker_main_config_file }}"
+    owner: root
+    group: root
+    mode: 0644
+
+...

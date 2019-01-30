@@ -1,0 +1,28 @@
+---
+
+- name: Create containers and display the results
+  block:
+    - name: Create containers
+      delegate_to: localhost
+      lxd_container:
+        name: "{{ inventory_hostname }}"
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: "{{ lxd_containers_image_server }}"
+          protocol: lxd
+          alias: "{{ hostvars[inventory_hostname]['lxd_image_source'] }}"
+        profiles: "{{ lxd_containers_profiles }}"
+        wait_for_ipv4_addresses: true
+        timeout: 600
+      register: container_creation_results
+  always:
+  - name: Display container creation results
+    debug:
+      var: container_creation_results
+      verbosity: 1
+  tags:
+    - create
+
+...

@@ -1,0 +1,15 @@
+---
+
+- name: Create LXD profile to enable Docker use in containers
+  delegate_to: localhost
+
+  # Attempt to limit runs to once per playbook run instead of for every node
+  # that the playbook targets.
+  run_once: true
+  lxd_profile:
+    name: docker
+    state: present
+    config: {"security.nesting": "true"}
+    description: Allow use of Docker in LXD containers
+
+...

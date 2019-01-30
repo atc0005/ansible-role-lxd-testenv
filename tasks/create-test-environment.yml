@@ -1,0 +1,41 @@
+---
+
+# vim: ts=2:sw=2:et:ft=ansible
+# -*- mode: ansible; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=ansible insertSpaces=true tabSize=2
+
+- name: HOST | Create custom LXD container profiles
+  import_tasks: host-create-lxd-profiles.yml
+
+- name: HOST | Create key pair for LXD container management
+  import_tasks: host-generate-ssh-keypair.yml
+
+- name: HOST | Create LXD containers
+  import_tasks: host-create-containers.yml
+
+- name: CONTAINERS | Bootstrap containers
+  import_tasks: containers-bootstrap.yml
+
+# https://groups.google.com/forum/#!topic/Ansible-project/n5bYP5BIbcQ
+- name: Gather facts after finishing container bootstrapping
+  setup:
+  become: no
+  # Any special meaning for this variable name?
+  register: setup
+
+- name: CONTAINERS | Install required packages
+  import_tasks: containers-install-required-packages.yml
+
+- name: CONTAINERS | Basic configuration
+  import_tasks: containers-configure.yml
+
+- name: CONTAINERS | Deploy Docker configuration
+  import_tasks: containers-deploy-docker-config.yml
+
+- name: CONTAINERS | Install additional packages
+  import_tasks: containers-install-extra-packages.yml
+
+- name: HOST | Apply settings to ease container management
+  import_tasks: host-add-container-settings.yml
+
+...

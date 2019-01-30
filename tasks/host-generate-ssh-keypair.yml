@@ -1,0 +1,43 @@
+---
+
+- name: Run ssh-keygen command, force display results in case of error
+  block:
+
+    - name: DEBUG | Display ssh-keygen command used to generate key for container use
+      debug:
+        verbosity: 2
+        msg: >
+          ssh-keygen
+          -q
+          -t ed25519
+          -f {{ lxd_host_ssh_private_key_for_containers }}
+          -C 'Key pair used for LXD container management'
+          -N ''
+
+    # https://serverfault.com/questions/910071/how-to-generate-host-ssh-keys-via-ansible
+    - name: Generate key for test environment container use
+      delegate_to: localhost
+      run_once: true
+      command : >
+        ssh-keygen
+        -q
+        -t ed25519
+        -f '{{ lxd_host_ssh_private_key_for_containers }}'
+        -C 'Key pair used for LXD container management'
+        -N ''
+      args:
+        creates: "{{ lxd_host_ssh_private_key_for_containers }}"
+      register: keygen_results
+
+  rescue:
+
+    - name: DEBUG | Display ssh-keygen command results
+      debug:
+        var: keygen_results
+
+    - fail:
+        msg: >
+          Failed to generate key pair for container managment.
+          See earlier debug output for details.
+
+...

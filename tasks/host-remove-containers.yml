@@ -1,0 +1,28 @@
+---
+
+# make sure all containers are running so that we can retrieve relevant
+# info and then prune that info from the host (e.g., known_hosts, /etc/hosts)
+- name: Ensure containers are running so we can pull required details
+  import_tasks: containers-start.yml
+
+- name: Stop containers
+  delegate_to: localhost
+  lxd_container:
+    name: "{{ inventory_hostname }}"
+    state: stopped
+    timeout: 90
+  when: lxd_host_remove_containers
+  tags:
+    - remove
+
+- name: Delete containers
+  delegate_to: localhost
+  lxd_container:
+    name: "{{ inventory_hostname }}"
+    state: absent
+    timeout: 90
+  when: lxd_host_remove_containers
+  tags:
+    - remove
+
+...

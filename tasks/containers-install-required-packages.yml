@@ -1,0 +1,8 @@
+---
+
+- name: Install required packages
+  package:
+    name: "{{ lxd_containers_packages_required }}"
+    state: present
+
+...
