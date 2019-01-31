@@ -1,0 +1,21 @@
+---
+
+# make sure all containers are running so that we can retrieve relevant
+# info and then prune that info from the host (e.g., known_hosts, /etc/hosts)
+- name: Ensure containers are running so we can pull required details
+  import_tasks: containers-start.yml
+
+# https://groups.google.com/forum/#!topic/Ansible-project/n5bYP5BIbcQ
+- name: Gather facts so we can remove matching entries from host configuration
+  setup:
+  become: no
+  # Any special meaning for this variable name?
+  register: setup
+
+- name: Remove container entries from /etc/hosts file
+  import_tasks: host-remove-etc-hosts-entries.yml
+
+- name: Remove container entries from known_hosts file
+  import_tasks: host-remove-known_hosts-entries.yml
+
+...

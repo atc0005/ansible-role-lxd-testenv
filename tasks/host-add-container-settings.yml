@@ -1,0 +1,47 @@
+---
+
+- name: Remove any residual container entries from /etc/hosts file
+  import_tasks: host-remove-etc-hosts-entries.yml
+
+- name: Remove any residual container entries from known_hosts file
+  import_tasks: host-remove-known_hosts-entries.yml
+
+# Generate /etc/hosts with Ansible
+# https://gist.github.com/rothgar/8793800
+- name: "Update hosts file on LXD host"
+  delegate_to: localhost
+  become: yes
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ inventory_hostname }}$'
+    line: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }} {{ inventory_hostname }}"
+    state: present
+  when:
+    - hostvars[inventory_hostname].ansible_default_ipv4.address is defined
+    - lxd_host_update_etc_hosts_file
+
+# https://stackoverflow.com/questions/30226113/ansible-ssh-prompt-known-hosts-issue
+- name: Scan each host for its ssh public key
+  delegate_to: localhost
+  become: no
+  shell: |
+    #ssh-keyscan -H {{ hostvars[inventory_hostname].inventory_hostname }},{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
+    ssh-keyscan {{ inventory_hostname }},{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
+  register: ssh_known_host_results
+  changed_when: ssh_known_host_results.rc != 0
+  failed_when: ssh_known_host_results.rc != 0
+  when:
+    - hostvars[inventory_hostname].ansible_default_ipv4.address is defined
+    - lxd_host_update_known_hosts_file
+
+- name: Add/update the public key in the '{{ lxd_host_ssh_known_hosts_file }}'
+  delegate_to: localhost
+  known_hosts:
+    name: "{{ inventory_hostname }}"
+    key: "{{ item }}"
+    path: "{{ lxd_host_ssh_known_hosts_file }}"
+  when:
+    - lxd_host_update_known_hosts_file
+  with_items: "{{ ssh_known_host_results.stdout_lines }}"
+
+...

@@ -1,0 +1,29 @@
+---
+
+# Note: If setting 'hosts' for this play to anything but localhost, make
+# sure to set 'serial: 1' in order to avoid race conditions
+# (refs atc0005/ansible-playbooks#11)
+- name: "Remove container hostkeys from known_hosts file on LXD host via IP Address"
+  delegate_to: localhost
+  become: no
+  known_hosts:
+    path: "{{ lxd_host_ssh_known_hosts_file }}"
+    name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+    state: absent
+  when: lxd_host_update_known_hosts_file
+  tags:
+    - remove
+
+- name: "Remove container hostkeys from known_hosts file on LXD host via hostname"
+  delegate_to: localhost
+  become: no
+  known_hosts:
+    path: "{{ lxd_host_ssh_known_hosts_file }}"
+    name: "{{ inventory_hostname }}"
+    state: absent
+  when: lxd_host_update_known_hosts_file
+  tags:
+    - remove
+
+
+...

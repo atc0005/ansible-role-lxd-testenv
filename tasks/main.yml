@@ -1,0 +1,12 @@
+---
+
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbooks
+
+- name: "Import tasks to {{ state }} test environment"
+  import_tasks: "{{ state }}-test-environment.yml"
+
+...
