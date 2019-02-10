@@ -1,16 +1,37 @@
 ---
 
-# vim: ts=2:sw=2:et:ft=ansible
-# -*- mode: ansible; indent-tabs-mode: nil; tab-width: 2 -*-
-# code: language=ansible insertSpaces=true tabSize=2
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
 
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
 
 # Host copy of file. Updated to reflect host keys of all containers.
-lxd_host_ssh_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
+lxd_host_ssh_user_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
+lxd_host_ssh_system_known_hosts_file: "/etc/ssh/known_hosts"
 
-# By default, update the $HOME/.ssh/known_hosts file on the host with host
-# keys from all containers.
-lxd_host_update_known_hosts_file: true
+# Host copy of file. Updated to reflect names of all containers.
+lxd_host_ssh_client_user_config_file: "{{ lookup('env','HOME') + '/.ssh/config' }}"
+lxd_host_ssh_client_system_config_file: "/etc/ssh/ssh_config"
+
+# Abstraction is probably not needed, but just in case ...
+lxd_host_etc_hosts_file: "/etc/hosts"
+
+# Update the $HOME/.ssh/config file for the user currently running Ansible
+# playbook.
+lxd_host_update_ssh_client_user_config_file: false
+
+# Update the /etc/ssh/config file on the host.
+lxd_host_update_ssh_client_system_config_file: true
+
+# Update the $HOME/.ssh/known_hosts file on the host with host keys from all
+# containers.
+lxd_host_update_user_known_hosts_file: false
+
+# Update the /etc/ssh/known_hosts file on the host with host keys from all
+# containers.
+lxd_host_update_system_known_hosts_file: false
 
 # Flag used to control whether the `/etc/hosts` file on the LXD container host
 # is updated to include new container name/IP pairs
@@ -26,10 +47,34 @@ lxd_host_ssh_public_key_for_containers: "{{ lxd_host_ssh_private_key_for_contain
 lxd_host_remove_container_settings: false
 lxd_host_remove_containers: false
 
+# Testing shows that the lxd_container module does not need to have the
+# containers stopped before they are removed.
+lxd_host_stop_containers_before_removal: false
+
+# Abstraction is probably not needed, but just in case ...
+lxd_containers_etc_hosts_file: "/etc/hosts"
+
+# Abstraction is probably not needed, but just in case ...
+lxd_containers_environment_file: "/etc/environment"
+
 # Should the /etc/hosts file on each container be updated to list all other
 # containers? If this is not enabled, then built-in dnsmasq support will be
 # used to provide name resolution between containers.
 lxd_containers_update_hosts_file: false
+
+# Proxy server that can be used to speed up package installation within
+# containers IMPORTANT: Make sure to provide the full URI scheme. If not set
+# (or set empty), empty environment variables will be defined and as a result
+# no  proxy server will be used.
+# https://askubuntu.com/questions/228530/updating-http-proxy-environment-variable
+# https://lxd.readthedocs.io/en/latest/environment/
+# lxd_containers_proxy_server: "http://proxy.example.com:3128/"
+lxd_containers_proxy_server: ""
+
+# Should the /etc/environment file be updated to set proxy server settings?
+# Note: This is safe to enable, even if the default value in this variables
+# file is an empty string as the user may opt to set it at the playbook level.
+lxd_containers_add_proxy_to_etc_environment_file: true
 
 # Server listed in the Ansible module examples
 lxd_containers_image_server: "https://images.linuxcontainers.org"
@@ -48,6 +93,8 @@ lxd_containers_configure: true
 lxd_containers_packages_required:
   - "openssh-server"
   - "sudo"
+
+# Non-essential packages installed in each container
 lxd_containers_packages_extra:
   # mainly a placeholder, but useful on its own
   - "nano"
@@ -57,7 +104,7 @@ lxd_containers_profiles:
   - "default"
 
 # https://docs.docker.com/config/daemon/
-docker_main_config_file: "/etc/docker/daemon.json"
+lxc_containers_docker_main_config_file: "/etc/docker/daemon.json"
 lxd_containers_docker_config_file_template: "docker-daemon-config.json.j2"
 
 # See Docker storage drivers for valid options, BUT know that some may not
@@ -65,8 +112,15 @@ lxd_containers_docker_config_file_template: "docker-daemon-config.json.j2"
 # order to provide the broadest compatibility with backing storage filesystems,
 # but this default option should be overridden by the role user if performance
 # is found to not be sufficient. Aside from 'vfs', the 'overlay' Docker storage
-# driver has been found to be compatible, provided that you are not using ZFS
-# as the the LXD storage option.
+# driver has been found to be compatible, provided that:
+#
+# * you are not using ZFS as the the LXD storage option
+# * if using docker-ce 18.09.1~3-0~ubuntu-xenial and LXD 3.0.3 the overlay
+#   kernel module is loaded by the LXD container profile
+#
+# AFAIK, no special changes are needed to use the 'overlay' Docker storage
+# driver with docker-ce 18.09.1~3-0~ubuntu-xenial and LXD LTS 2.0.x provided
+# with Ubuntu 16.04.
 # https://github.com/lxc/lxd/issues/2305
 # https://docs.docker.com/storage/storagedriver/select-storage-driver/
 lxd_containers_docker_storage_driver: "vfs"
@@ -78,9 +132,9 @@ lxd_containers_service_group: "ansible"
 # Default state is setting up a test environment
 state: "create"
 
-default_python_install_command: "if [[ $? -ne 0 ]]; then if [[ -f /usr/bin/apt-get ]]; then apt-get install -y python; fi; if [[ -f /usr/bin/yum ]]; then yum install -y python; fi; fi"
+lxc_containers_default_python_install_command: "if [ -f /usr/bin/apt-get ]; then apt-get install -y python; fi; if [ -f /usr/bin/yum ]; then yum install -y python; fi"
 
 # Location of Python 2 interpreter; needed for bootstrap testing purposes
-python_path: "/usr/bin/python"
+lxc_containers_python_path: "/usr/bin/python"
 
 ...

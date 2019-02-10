@@ -1,47 +1,116 @@
 ---
 
-- name: Remove any residual container entries from /etc/hosts file
-  import_tasks: host-remove-etc-hosts-entries.yml
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
 
-- name: Remove any residual container entries from known_hosts file
-  import_tasks: host-remove-known_hosts-entries.yml
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
 
 # Generate /etc/hosts with Ansible
 # https://gist.github.com/rothgar/8793800
-- name: "Update hosts file on LXD host"
+- name: "HOST | Update {{ lxd_host_etc_hosts_file }}"
   delegate_to: localhost
   become: yes
-  lineinfile:
-    dest: /etc/hosts
-    regexp: '.*{{ inventory_hostname }}$'
-    line: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }} {{ inventory_hostname }}"
-    state: present
+  run_once: true
+  blockinfile:
+    dest: "{{ lxd_host_etc_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
+      {{ hostvars[h].ansible_default_ipv4.address }} {{ h }}
+      {% endfor %}
   when:
-    - hostvars[inventory_hostname].ansible_default_ipv4.address is defined
     - lxd_host_update_etc_hosts_file
 
-# https://stackoverflow.com/questions/30226113/ansible-ssh-prompt-known-hosts-issue
-- name: Scan each host for its ssh public key
+- name: "HOST | Add container host keys to {{ lxd_host_ssh_system_known_hosts_file }}"
   delegate_to: localhost
-  become: no
-  shell: |
-    #ssh-keyscan -H {{ hostvars[inventory_hostname].inventory_hostname }},{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
-    ssh-keyscan {{ inventory_hostname }},{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
-  register: ssh_known_host_results
-  changed_when: ssh_known_host_results.rc != 0
-  failed_when: ssh_known_host_results.rc != 0
-  when:
-    - hostvars[inventory_hostname].ansible_default_ipv4.address is defined
-    - lxd_host_update_known_hosts_file
+  run_once: true
+  become: yes
+  blockinfile:
+    create: yes
+    dest: "{{ lxd_host_ssh_system_known_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].ansible_ssh_host_key_rsa_public is defined %}
+      {{ h }} ssh-rsa {{ hostvars[h]['ansible_ssh_host_key_rsa_public'] }}
+      {% endfor %}
 
-- name: Add/update the public key in the '{{ lxd_host_ssh_known_hosts_file }}'
-  delegate_to: localhost
-  known_hosts:
-    name: "{{ inventory_hostname }}"
-    key: "{{ item }}"
-    path: "{{ lxd_host_ssh_known_hosts_file }}"
+      {% for h in groups['all'] if hostvars[h].ansible_ssh_host_key_ecdsa_public is defined %}
+      {{ h }} ecdsa-sha2-nistp256 {{ hostvars[h]['ansible_ssh_host_key_ecdsa_public'] }}
+      {% endfor %}
+
+      {% for h in groups['all'] if hostvars[h].ansible_ssh_host_key_ed25519_public is defined %}
+      {{ h }} ssh-ed25519 {{ hostvars[h]['ansible_ssh_host_key_ed25519_public'] }}
+      {% endfor %}
   when:
-    - lxd_host_update_known_hosts_file
-  with_items: "{{ ssh_known_host_results.stdout_lines }}"
+    - lxd_host_update_system_known_hosts_file
+
+- name: "HOST | Add container host keys to {{ lxd_host_ssh_user_known_hosts_file }}"
+  delegate_to: localhost
+  run_once: true
+  become: no
+  blockinfile:
+    create: yes
+    dest: "{{ lxd_host_ssh_user_known_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].ansible_ssh_host_key_rsa_public is defined %}
+      {{ h }} ssh-rsa {{ hostvars[h]['ansible_ssh_host_key_rsa_public'] }}
+      {% endfor %}
+
+      {% for h in groups['all'] if hostvars[h].ansible_ssh_host_key_ecdsa_public is defined %}
+      {{ h }} ecdsa-sha2-nistp256 {{ hostvars[h]['ansible_ssh_host_key_ecdsa_public'] }}
+      {% endfor %}
+
+      {% for h in groups['all'] if hostvars[h].ansible_ssh_host_key_ed25519_public is defined %}
+      {{ h }} ssh-ed25519 {{ hostvars[h]['ansible_ssh_host_key_ed25519_public'] }}
+      {% endfor %}
+  when:
+    - lxd_host_update_user_known_hosts_file
+
+- name: "HOST | Add container host entries to {{ lxd_host_ssh_client_system_config_file }}"
+  delegate_to: localhost
+  # Allow the file to be created if needed
+  become: yes
+  blockinfile:
+    create: yes
+    dest: "{{ lxd_host_ssh_client_system_config_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
+      # LXD test container
+      Host {{ h }} {{ hostvars[h].ansible_default_ipv4.address }}
+        StrictHostKeyChecking no
+        UserKnownHostsFile=/dev/null
+        #User root
+        LogLevel ERROR
+      {% endfor %}
+  when:
+    - lxd_host_update_ssh_client_system_config_file
+  # Intended to help prevent overwrites
+  run_once: true
+
+- name: "HOST | Add container host entries to {{ lxd_host_ssh_client_user_config_file }}"
+  delegate_to: localhost
+  # Allow the file to be created if needed
+  become: no
+  blockinfile:
+    create: yes
+    dest: "{{ lxd_host_ssh_client_user_config_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
+      # LXD test container
+      Host {{ h }} {{ hostvars[h].ansible_default_ipv4.address }}
+        StrictHostKeyChecking no
+        UserKnownHostsFile=/dev/null
+        #User root
+        LogLevel ERROR
+      {% endfor %}
+  when:
+    - lxd_host_update_ssh_client_user_config_file
+  # Intended to help prevent overwrites
+  run_once: true
 
 ...

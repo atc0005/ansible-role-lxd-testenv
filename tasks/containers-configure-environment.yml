@@ -1,0 +1,56 @@
+---
+
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
+- name: Start SSH, set it to start at boot
+  delegate_to: "{{ item }}"
+  service:
+    name: sshd
+    state: started
+    enabled: yes
+  with_items:
+    - "{{ groups['all'] }}"
+
+# https://github.com/ipspace/NetOpsWorkshop/blob/2ff7984a42bf8ed0271aa8f8eaef72140f3509b8/tools/ssh-keys/get-keys.yml#L34
+- name: "Update hosts file in container"
+  delegate_to: "{{ item }}"
+  # This directive forces the task to attempt execution on the first host in
+  # the current batch and then applies all results and facts to all the hosts
+  # in the same batch.
+  run_once: true
+  blockinfile:
+    dest: "{{ lxd_containers_etc_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
+      {{ hostvars[h].ansible_default_ipv4.address }} {{ h }}
+      {% endfor %}
+  with_items:
+    - "{{ groups['all'] }}"
+  when: lxd_containers_update_hosts_file
+
+# https://askubuntu.com/questions/228530/updating-http-proxy-environment-variable
+# https://askubuntu.com/questions/866161/setting-path-variable-in-etc-environment-vs-profile
+- name: "Apply proxy settings via environment file in container"
+  delegate_to: "{{ item }}"
+  run_once: true
+  blockinfile:
+    dest: "{{ lxd_containers_environment_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      http_proxy="{{ lxd_containers_proxy_server }}"
+      https_proxy="{{ lxd_containers_proxy_server }}"
+      ftp_proxy="{{ lxd_containers_proxy_server }}"
+  with_items:
+    - "{{ groups['all'] }}"
+  when:
+    - lxd_containers_proxy_server is defined
+    - lxd_containers_proxy_server != ""
+    - lxd_containers_add_proxy_to_etc_environment_file
+
+...

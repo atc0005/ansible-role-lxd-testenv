@@ -7,12 +7,10 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
-- name: Install extra packages
-  delegate_to: "{{ item }}"
-  package:
-    name: "{{ lxd_containers_packages_extra }}"
-    state: present
-  with_items:
-    - "{{ groups['all'] }}"
+- name: Remove LXD container settings
+  import_tasks: host-remove-container-settings.yml
+
+- name: Remove LXD containers
+  import_tasks: host-remove-containers.yml
 
 ...

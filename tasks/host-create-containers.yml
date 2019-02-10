@@ -1,27 +1,41 @@
 ---
 
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
 - name: Create containers and display the results
   block:
     - name: Create containers
       delegate_to: localhost
       lxd_container:
-        name: "{{ inventory_hostname }}"
+        name: "{{ item }}"
         state: started
+        config:
+          "environment.http_proxy": "{{ lxd_containers_proxy_server | default('') }}"
+          "environment.https_proxy": "{{ lxd_containers_proxy_server | default('') }}"
+          "environment.ftp_proxy": "{{ lxd_containers_proxy_server | default('') }}"
         source:
           type: image
           mode: pull
           server: "{{ lxd_containers_image_server }}"
           protocol: lxd
-          alias: "{{ hostvars[inventory_hostname]['lxd_image_source'] }}"
-        profiles: "{{ lxd_containers_profiles }}"
+          alias: "{{ hostvars[item]['lxd_image_source'] }}"
+        # Attempt to use host or group specific profiles, fallback to standard set if not specified
+        profiles: "{{ hostvars[item]['lxd_containers_profiles'] | default(lxd_containers_profiles) }}"
         wait_for_ipv4_addresses: true
         timeout: 600
       register: container_creation_results
+      with_items:
+        - "{{ groups['all'] }}"
   always:
-  - name: Display container creation results
-    debug:
-      var: container_creation_results
-      verbosity: 1
+    - name: Display container creation results
+      debug:
+        var: container_creation_results
+        verbosity: 1
   tags:
     - create
 
