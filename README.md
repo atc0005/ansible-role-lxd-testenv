@@ -9,15 +9,13 @@ roles and playbooks.
 
 ## Limitations
 
-- Tested on Ubuntu 16.04+ only
-  - *support for other distros may be added in a future release*
+- Tested on Ubuntu 16.04+ with LXD 2.0 and 3.0 LTS series
+  - *support for other distros and LXD versions may be added in a future
+    release*
 
-- This version of the role assumes that the calling playbook provides a host
-  list *and* sets the `serial: 1` option
-  - each inventory host needs to be processed serially in order to prevent
-    race conditions; testing has shown that simultaneous calls to some of the
-    modules used (e.g., `known_hosts`) causes race conditions which results in
-    data corruption
+- This version of the role assumes that the calling playbook specifies
+  `localhost` only as the sole entry in the `hosts` list. Attempting to use
+  `all` as a value for that parameter results in playbook/role failure.
 
 Future versions of this role are intended to better handle these issues.
 
@@ -30,9 +28,9 @@ Future versions of this role are intended to better handle these issues.
 
 - Ubuntu 16.04 or newer
 - [LXD packages](https://linuxcontainers.org/lxd/getting-started-cli/)
-  installed
+  installed (tested with 2.0 and 3.0 LTS series)
 - Equivalent of `sudo lxd init` already run
-  - note: the The [`atc0005.lxd-host`
+  - note: the [`atc0005.lxd-host`
     role](https://github.com/atc0005/ansible-role-lxd-host) role is intended
     to handle this, though as of this writing that role is still incomplete
 
@@ -43,44 +41,70 @@ Future versions of this role are intended to better handle these issues.
   - valid values are `create` or `remove`
 - Role variables are set within `default/main.yml`.
 
-| Variable                                     | Default value                        | Purpose                                                                                                                                                                                                                                                                                               |
-| -------------------------------------------- | :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lxd_host_ssh_known_hosts_file`              | `$HOME/.ssh/known_hosts`             | Host copy of file. Updated to reflect host keys of all containers.                                                                                                                                                                                                                                    |
-| `lxd_host_update_known_hosts_file`           | `true`                               | Controls whether the `lxd_host_ssh_known_hosts_file` file on the host is updated with host keys from all containers.                                                                                                                                                                                  |
-| `lxd_host_update_etc_hosts_file`             | `true`                               | Controls whether the `/etc/hosts` file on the LXD container host is updated to include new container name/IP pairs                                                                                                                                                                                    |
-| `lxd_host_ssh_private_key_for_containers`    | `$HOME/.ssh/id_ed25519`              | Generated if it does not exist. See notes for public key.                                                                                                                                                                                                                                             |
-| `lxd_host_ssh_public_key_for_containers`     | `$HOME/.ssh/id_ed25519.pub`          | Inserted into `root` and `ansible` user profiles within each container.                                                                                                                                                                                                                               |
-| `lxd_host_remove_container_settings`         | `false`                              | Controls whether this role removes `lxd_host_ssh_known_hosts_file` and `/etc/hosts` entries as part of teardown tasks. Usually, but not required to be performed along with container removal. Defaults to `false`                                                                                    |
-| `lxd_host_remove_containers`                 | `false`                              | Controls whether containers are removed as part of teardown process. Defaults to `false`.                                                                                                                                                                                                             |
-| `lxd_containers_update_hosts_file`           | `false`                              | Controls whether `/etc/hosts` within containers are updated to include entries for *all* containers generated by this role. Since the LXD-provided dnsmasq instance bound to the bridge already handles name resolution, this option is not really needed and may be removed in a future role update. |
-| `lxd_containers_image_server`                | <https://images.linuxcontainers.org> | Server listed in the Ansible module examples. Used to fetch LXD container images for generating fresh containers.                                                                                                                                                                                     |
-| `lxd_containers_create`                      | `true`                               | Controls whether containers are generated when this role is run. **TODO**: Validation is needed to assert that this is not set at the same time as the flag for removing containers.                                                                                                                  |
-| `lxd_containers_bootstrap`                   | `true`                               | Controls whether Python, sudo and other packages are installed as part of preparing new containers for management by Ansible.                                                                                                                                                                         |
-| `lxd_containers_configure`                   | `true`                               | Create service account, groups, enable SSH at boot, etc                                                                                                                                                                                                                                               |
-| `lxd_containers_packages_required`           | `openssh-server`, `sudo`             | Packages installed as part of the *bootstrap* process for new containers                                                                                                                                                                                                                              |
-| `lxd_containers_packages_extra`              | `nano`                               | Ensure that a sensible (j/k) editor is available in newly created containers                                                                                                                                                                                                                          |
-| `lxd_containers_profiles`                    | `default`                            | LXD profiles applied to all new containers by default.                                                                                                                                                                                                                                                |
-| `docker_main_config_file`                    | `/etc/docker/daemon.json`            | Path to Docker "daemon" configuration file. Role-provided template for this file configures the active storage driver used within new containers intended to test Docker workflows.                                                                                                                   |
-| `lxd_containers_docker_config_file_template` | `docker-daemon-config.json.j2`       | Template file included with role used for setting Docker daemon storage driver.                                                                                                                                                                                                                       |
-| `lxd_containers_docker_storage_driver`       | `vfs`                                | Docker storage drivers: `overlay2` is incompatible with LXD LTS (2.0, 3.0), `overlay` is incompatible with ZFS backed LXD storage. `vfs` is slow, but compatible with both. Override this from a playbook (or other higher level Ansible variable source) if not using ZFS for better performance.    |
-| `lxd_containers_sudoers_include_file`        | `/etc/sudoers.d/ansible`             | Location of sudoers include file used to grant service account full sudo privileges within new containers                                                                                                                                                                                             |
-| `lxd_containers_service_account`             | `ansible`                            | Service account created within containers that is granted full sudo privileges. Often used by playbooks as a dedicated remote management account.                                                                                                                                                     |
-| `lxd_containers_service_group`               | `ansible`                            | Service group that goes with the service account already noted here.                                                                                                                                                                                                                                  |
-| `state`                                      | `create`                             | Flag with valid values of `create` or `remove`. Used to control whether a test environment will be created or removed/destroyed.                                                                                                                                                                      |
-| `default_python_install_command`             | *see example below*                  | Crude one-liner shell command to use appropriate package manager to install Python for Ansible use via a `raw` command.                                                                                                                                                                               |
-| `python_path`                                | `/usr/bin/python`                    | Location of Python interpreter used by Ansible on remote hosts (containers in our case).                                                                                                                                                                                                              |
+Values set here can be overridden in multiple locations, but most commonly via
+small include files which reside alongside playbooks or within the playbook
+itself. The playbooks found in the
+[`ansible-playbook-lxd-testenv`](#references) repo have most of the common
+variables listed here directly within the playbooks in an effort to make it
+easy to override default values.
 
-Default shell command for the `default_python_install_command` variable:
+### Variables specific to the LXD host
+
+| Variable                                        | Default value               | Purpose                                                                                                                                                                                                                         |
+|-------------------------------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `state`                                         | `create`                    | Flag with valid values of `create` or `remove`. Used to control whether a test environment will be created or removed/destroyed.                                                                                                |
+| `lxd_host_ssh_user_known_hosts_file`            | `$HOME/.ssh/known_hosts`    | Host copy of file specific to user running playbook. Updated to reflect host keys of all containers.                                                                                                                            |
+| `lxd_host_ssh_system_known_hosts_file`          | `/etc/ssh/known_hosts`      | Host copy of file for all users. Updated to reflect host keys of all containers.                                                                                                                                                |
+| `lxd_host_ssh_client_user_config_file`          | `$HOME/.ssh/config`         | Host copy of file specific to user running playbook. Entries force SSH/Ansible to disable recording and validation of container host keys.                                                                                      |
+| `lxd_host_ssh_client_system_config_file`        | `/etc/ssh/ssh_config`       | Host copy of file for all users. Entries force SSH/Ansible to disable recording and validation of container host keys.                                                                                                          |
+| `lxd_host_etc_hosts_file`                       | `/etc/hosts`                | This variable exists to allow targeting a hosts file in a non-standard location.                                                                                                                                                |
+| `lxd_host_update_user_known_hosts_file`         | `false`                     | Controls whether the `lxd_host_ssh_user_known_hosts_file` file (usually for the user running playbook) is populated with host keys of all containers.                                                                           |
+| `lxd_host_update_system_known_hosts_file`       | `false`                     | Controls whether the `lxd_host_ssh_system_known_hosts_file` file (system-wide file for all users) is populated with host keys of all containers.                                                                                |
+| `lxd_host_update_ssh_client_user_config_file`   | `false`                     | Controls whether the `lxd_host_ssh_client_user_config_file` file (usually for the user running playbook) is populated with host/ip entries which disable host key checks for matching hosts.                                    |
+| `lxd_host_update_ssh_client_system_config_file` | `true`                      | Controls whether the `lxd_host_ssh_client_system_config_file` file (system-wide for all users) is populated with host/ip entries which disable host key checks for matching hosts.                                              |
+| `lxd_host_update_etc_hosts_file`                | `true`                      | Controls whether the `lxd_host_etc_hosts_file` file on the LXD container host is updated to include new container name/IP pairs                                                                                                 |
+| `lxd_host_stop_containers_before_removal`       | `false`                     | Controls whether an attempt should be made to stop containers before destroying them. Light testing indicates this is not a necessary step, but YMMV.                                                                           |
+| `lxd_host_ssh_private_key_for_containers`       | `$HOME/.ssh/id_ed25519`     | Generated if it does not exist. See notes for public key.                                                                                                                                                                       |
+| `lxd_host_ssh_public_key_for_containers`        | `$HOME/.ssh/id_ed25519.pub` | Inserted into `root` and `ansible` user profiles within each container.                                                                                                                                                         |
+| `lxd_host_remove_container_settings`            | `false`                     | Controls whether this role removes `lxd_host_ssh_known_hosts_file` and `lxd_host_etc_hosts_file` entries as part of teardown tasks. Usually, but not required to be performed along with container removal. Defaults to `false` |
+| `lxd_host_remove_containers`                    | `false`                     | Controls whether containers are removed as part of teardown process. Defaults to `false`.                                                                                                                                       |
+
+### Variables specific to LXD containers created by this role
+
+| Variable                                           | Default value                        | Purpose                                                                                                                                                                                                                                                                                                                  |
+|----------------------------------------------------|--------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `lxd_containers_etc_hosts_file`                    | `/etc/hosts`                         | This variable exists to allow targeting a hosts file in a non-standard location.                                                                                                                                                                                                                                         |
+| `lxd_containers_update_hosts_file`                 | `false`                              | Controls whether `lxd_containers_etc_hosts_file` within containers are updated to include entries for *all* containers generated by this role. Since the LXD-provided dnsmasq instance bound to the bridge already handles name resolution, this option is not really needed and may be removed in a future role update. |
+| `lxd_containers_image_server`                      | <https://images.linuxcontainers.org> | Server listed in the Ansible module examples. Used to fetch LXD container images for generating fresh containers.                                                                                                                                                                                                        |
+| `lxd_containers_create`                            | `true`                               | Controls whether containers are generated when this role is run. **TODO**: Validation is needed to assert that this is not set at the same time as the flag for removing containers.                                                                                                                                     |
+| `lxd_containers_bootstrap`                         | `true`                               | Controls whether Python, sudo and other packages are installed as part of preparing new containers for management by Ansible.                                                                                                                                                                                            |
+| `lxd_containers_configure`                         | `true`                               | Create service account, groups, enable SSH at boot, etc                                                                                                                                                                                                                                                                  |
+| `lxd_containers_packages_required`                 | `openssh-server`, `sudo`             | Packages installed as part of the *bootstrap* process for new containers                                                                                                                                                                                                                                                 |
+| `lxd_containers_packages_extra`                    | `nano`                               | Ensure that a sensible (j/k) editor is available in newly created containers                                                                                                                                                                                                                                             |
+| `lxd_containers_profiles`                          | `default`                            | LXD profiles applied to all new containers by default.                                                                                                                                                                                                                                                                   |
+| `lxd_containers_proxy_server`                      | *empty string*                       | If set, this value is set on containers at the time of creation to allow use of a proxy server. Intended either to permit containers restricted Internet access *or* to allow faster package retrieval via caching proxy.                                                                                                |
+| `lxd_containers_docker_config_file_template`       | `docker-daemon-config.json.j2`       | Template file included with role used for setting Docker daemon storage driver.                                                                                                                                                                                                                                          |
+| `lxd_containers_docker_storage_driver`             | `vfs`                                | Docker storage drivers: `overlay2` is incompatible with LXD LTS (2.0, 3.0), `overlay` is incompatible with ZFS backed LXD storage. `vfs` is slow, but compatible with both. Override this from a playbook (or other higher level Ansible variable source) if not using ZFS for better performance.                       |
+| `lxd_containers_sudoers_include_file`              | `/etc/sudoers.d/ansible`             | Location of sudoers include file used to grant service account full sudo privileges within new containers                                                                                                                                                                                                                |
+| `lxd_containers_service_account`                   | `ansible`                            | Service account created within containers that is granted full sudo privileges. Often used by playbooks as a dedicated remote management account.                                                                                                                                                                        |
+| `lxd_containers_service_group`                     | `ansible`                            | Service group that goes with the service account already noted here.                                                                                                                                                                                                                                                     |
+| `lxc_containers_docker_main_config_file`           | `/etc/docker/daemon.json`            | Path to Docker "daemon" configuration file. Role-provided template for this file configures the active storage driver used within new containers intended to test Docker workflows.                                                                                                                                      |
+| `lxc_containers_default_python_install_command`    | *see example below*                  | Crude one-liner shell command to use appropriate package manager to install Python for Ansible use via a `raw` command.                                                                                                                                                                                                  |
+| `lxc_containers_python_path`                       | `/usr/bin/python`                    | Location of Python interpreter used by Ansible on remote hosts (containers in our case).                                                                                                                                                                                                                                 |
+| `lxd_containers_add_proxy_to_etc_environment_file` | `true`                               | Controls whether `lxd_containers_environment_file` is updated with `http_proxy`, `https_proxy` and `ftp_proxy` environment vars set to the value of `lxd_containers_proxy_server`.                                                                                                                                       |
+| `lxd_containers_environment_file`                  | `/etc/environment`                   | If `lxd_containers_add_proxy_to_etc_environment_file` is enabled, then the standard `http_proxy`, `https_proxy` and `ftp_proxy` environment variables are set within this file.                                                                                                                                          |
+
+
+Current shell command for the `lxc_containers_default_python_install_command` variable:
 
 ```shell
-if [[ $? -ne 0 ]]; then
-  if [[ -f /usr/bin/apt-get ]]; then
-    apt-get install -y python;
-  fi
-  if [[ -f /usr/bin/yum ]]; then
-    yum install -y python;
-  fi
+if [ -f /usr/bin/apt-get ]; then
+  apt-get install -y python;
 fi
+if [ -f /usr/bin/yum ]; then
+  yum install -y python;
+fi
+
 ```
 
 If not set elsewhere and if Python 2.x is not found on the system as
@@ -107,7 +131,11 @@ See [Requirements](#requirements) section for additional items.
 
 - name: Configure base LXD host
   hosts: localhost
-  connection: local
+
+  # Rely on this setting to be specified in host_vars or group_vars files. If
+  # we lock in the 'local' option here then that rules out setting up any
+  # remote hosts as LXD hosts.
+  # connection: local
 
   # Should be fine to gather facts for just the future LXD host
   gather_facts: yes
@@ -121,15 +149,14 @@ See [Requirements](#requirements) section for additional items.
         name: atc0005.lxd-host
 
 - name: Setup LXD test environment
-  hosts: all
-  connection: local
+  hosts: localhost
 
-  # This is needed due to potential for multiple access attempts via modules
-  # that are not intended/designed for it. Without this setting occasional
-  # race conditions occur which results in data corruption.
-  serial: 1
+  # Rely on this setting to be specified in host_vars or group_vars files. If
+  # we lock in the 'local' option here then that rules out setting up any
+  # remote hosts as Docker hosts.
+  # connection: local
 
-  # Rely on specific tasks to call setup module as needed
+  # This is handled by the earlier atc0005.lxd-host role play
   gather_facts: no
 
   tasks:
@@ -142,6 +169,10 @@ See [Requirements](#requirements) section for additional items.
       vars:
         # Valid values: "create" and "remove"
         state: "create"
+
+        # Note: Other values can be set here to override role defaults.
+        # See the README file for details.
+
 ```
 
 ### Teardown/Remove test environment
@@ -151,14 +182,15 @@ See [Requirements](#requirements) section for additional items.
 ```yaml
 
 - name: Tear down our LXD test environment
-  hosts: all
-  connection: local
-  gather_facts: no
+  hosts: localhost
 
-  # This is needed due to potential for multiple access attempts via modules
-  # that are not intended/designed for it. Without this setting occasional
-  # race conditions occur which results in data corruption.
-  serial: 1
+  # Rely on this setting to be specified in host_vars or group_vars files. If
+  # we lock in the 'local' option here then that rules out connecting via SSH
+  # later, perhaps as a means of validating earlier playbook tasks.
+  # connection: local
+
+  # Fact gathering is not needed for container and settings removal
+  gather_facts: no
 
   tasks:
 
@@ -177,7 +209,7 @@ See [Requirements](#requirements) section for additional items.
 
 ### Create `requirements.yml` file
 
-Note: This role is not yet availalble via Ansible Galaxy, so for now you will
+Note: This role is not yet available via Ansible Galaxy, so for now you will
 need to install it via a `requirements.yml` file.
 
 #### Specific stable release version
@@ -185,9 +217,15 @@ need to install it via a `requirements.yml` file.
 ```yaml
 ---
 
+# This stub role is referenced by the lxd-testenv setup playbook,
+# so we're using an early tag/release to satisfy those requirements
+- name: "atc0005.lxd-host"
+  src: https://github.com/atc0005/ansible-role-lxd-host.git"
+  version: "v0.1-alpha"
+
 - name: "atc0005.lxd-testenv"
   src: https://github.com/atc0005/ansible-role-lxd-testenv.git"
-  version: "v1.0"
+  version: "v1.1"
 
 ...
 
@@ -199,6 +237,14 @@ Example `requirements.yml` file that uses the latest from the `master` branch:
 
 ```yaml
 ---
+
+# This stub role is referenced by the lxd-testenv setup playbook,
+# so we're including that there to satisfy those requirements.
+# Referencing the master branch for this role to match the same branch
+# reference for the atc0005.lxd-testenv repo.
+- name: "atc0005.lxd-host"
+  src: https://github.com/atc0005/ansible-role-lxd-host.git"
+  version: "master"
 
 - name: "atc0005.lxd-testenv"
   src: https://github.com/atc0005/ansible-role-lxd-testenv.git"
@@ -237,6 +283,8 @@ This role was created in 2019 by Adam Chalkley as part of building an
 on-demand development environment toolkit managed by Ansible.
 
 ## References
+
+- <https://github.com/atc0005/ansible-playbook-lxd-testenv>
 
 - <https://github.com/atc0005/ansible-playbooks>
 - <https://github.com/atc0005/ansible-role-lxd-host>

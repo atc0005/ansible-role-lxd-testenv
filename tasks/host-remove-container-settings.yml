@@ -1,21 +1,74 @@
 ---
 
-# make sure all containers are running so that we can retrieve relevant
-# info and then prune that info from the host (e.g., known_hosts, /etc/hosts)
-- name: Ensure containers are running so we can pull required details
-  import_tasks: containers-start.yml
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
 
-# https://groups.google.com/forum/#!topic/Ansible-project/n5bYP5BIbcQ
-- name: Gather facts so we can remove matching entries from host configuration
-  setup:
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
+- name: "Remove container entries from hosts file on LXD host"
+  delegate_to: localhost
+  become: yes
+  blockinfile:
+    dest: "{{ lxd_containers_etc_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    # By setting to an empty string, the block contents will be removed
+    block: ""
+  when: lxd_host_update_etc_hosts_file
+  tags:
+    - remove
+
+# Attempt to run once after all hosts have been fact gathered
+- name: Remove container host entries from SSH client user config on host
+  delegate_to: localhost
+  become: yes
+  blockinfile:
+    dest: "{{ lxd_host_ssh_client_user_config_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    # By setting to an empty string, the block contents will be removed
+    block: ""
+  when:
+    - lxd_host_update_ssh_client_user_config_file
+  tags:
+    - remove
+
+# Attempt to run once after all hosts have been fact gathered
+- name: Remove container host entries from SSH client system config on host
+  delegate_to: localhost
+  become: yes
+  blockinfile:
+    dest: "{{ lxd_host_ssh_client_system_config_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    # By setting to an empty string, the block contents will be removed
+    block: ""
+  when:
+    - lxd_host_update_ssh_client_system_config_file
+  tags:
+    - remove
+
+- name: Remove container host keys from SSH client system config on host
+  delegate_to: localhost
+  run_once: true
+  become: yes
+  blockinfile:
+    dest: "{{ lxd_host_ssh_system_known_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: ""
+    # By setting to an empty string, the block contents will be removed
+  when:
+    - lxd_host_update_system_known_hosts_file
+
+- name: Remove container host keys from SSH client user config on host
+  delegate_to: localhost
+  run_once: true
   become: no
-  # Any special meaning for this variable name?
-  register: setup
-
-- name: Remove container entries from /etc/hosts file
-  import_tasks: host-remove-etc-hosts-entries.yml
-
-- name: Remove container entries from known_hosts file
-  import_tasks: host-remove-known_hosts-entries.yml
+  blockinfile:
+    dest: "{{ lxd_host_ssh_user_known_hosts_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: ""
+    # By setting to an empty string, the block contents will be removed
+  when:
+    - lxd_host_update_user_known_hosts_file
 
 ...

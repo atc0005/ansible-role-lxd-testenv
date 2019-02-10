@@ -1,9 +1,17 @@
 ---
 
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
 - name: Run ssh-keygen command, force display results in case of error
   block:
 
     - name: DEBUG | Display ssh-keygen command used to generate key for container use
+      delegate_to: localhost
       debug:
         verbosity: 2
         msg: >
@@ -32,6 +40,7 @@
   rescue:
 
     - name: DEBUG | Display ssh-keygen command results
+      delegate_to: localhost
       debug:
         var: keygen_results
 

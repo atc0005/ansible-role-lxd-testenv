@@ -1,12 +1,23 @@
 ---
 
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
 - name: Create service group
+  delegate_to: "{{ item }}"
   group:
     name: "{{ lxd_containers_service_group }}"
     state: present
     system: no
+  with_items:
+    - "{{ groups['all'] }}"
 
 - name: Create service user
+  delegate_to: "{{ item }}"
   user:
     name: "{{ lxd_containers_service_account }}"
     # Explicitly specify this in case the default behavior ever changes
@@ -16,61 +27,61 @@
     group: "{{ lxd_containers_service_group }}"
     state: present
     system: no
+  with_items:
+    - "{{ groups['all'] }}"
 
 - name: "Create service account sudoers file in container"
+  delegate_to: "{{ item }}"
   copy:
     content: '{{ lxd_containers_service_account }} ALL=(ALL) NOPASSWD: ALL'
     dest: "{{ lxd_containers_sudoers_include_file }}"
     owner: root
     group: root
     mode: 0440
+  with_items:
+    - "{{ groups['all'] }}"
 
 - name: Deploy SSH Public key for container management
   block:
 
     - name: Load SSH public key for containers from current user profile
+      delegate_to: "{{ item }}"
+      delegate_facts: true
       set_fact:
         lxd_host_ssh_public_key_for_containers_content: >-
           {{ lookup('file', lxd_host_ssh_public_key_for_containers) }}
+      with_items:
+        - "{{ groups['all'] }}"
 
     - name: Deploy current user SSH public key to specific users in container
+      delegate_to: "{{ item[1] }}"
+      delegate_facts: true
       authorized_key:
-        user: "{{ item }}"
+        user: "{{ item[0] }}"
         state: present
-        key: "{{ lxd_host_ssh_public_key_for_containers_content }}"
+        key: "{{ hostvars[item[1]]['lxd_host_ssh_public_key_for_containers_content'] }}"
       register: authorized_key_insert_output
-      with_items:
-        - root
-        - ansible
+      with_nested:
+        - [ 'root', 'ansible' ]
+        - "{{ groups['all'] }}"
 
   rescue:
 
     - name: DEBUG | Display public key contents intended for container management
+      delegate_to: "{{ item }}"
       debug:
-        var: lxd_host_ssh_public_key_for_containers_content
+        var: hostvars[item]['lxd_host_ssh_public_key_for_containers_content']
+      with_items:
+        - "{{ groups['all'] }}"
 
     - name: DEBUG | Display authorized_key insertion results
+      delegate_to: "{{ item }}"
       debug:
-        var: authorized_key_insert_output
+        var: hostvars[item]['authorized_key_insert_output']
+      with_items:
+        - "{{ groups['all'] }}"
 
     - fail:
         msg: "Failed to deploy key to users in containers"
-
-
-- name: Start SSH, set it to start at boot
-  service:
-    name: sshd
-    state: started
-    enabled: yes
-
-- name: "Update hosts file in container"
-  lineinfile:
-    dest: /etc/hosts
-    regexp: '.*{{ inventory_hostname }}$'
-    line: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }} {{ inventory_hostname }}"
-    state: present
-  when:
-    - hostvars[inventory_hostname].ansible_default_ipv4.address is defined
-    - lxd_containers_update_hosts_file
 
 ...

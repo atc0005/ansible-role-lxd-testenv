@@ -1,29 +1,62 @@
 ---
 
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
 - name: Confirm python is installed in container
-  raw: "test -e {{ python_path }}"
+  delegate_to: "{{ item }}"
+  #delegate_facts: true
+  raw: "test -e {{ lxc_containers_python_path }}"
   register: python_install_check
-  failed_when: python_install_check.rc not in [0, 1]
+  failed_when: python_install_check['rc'] not in [0, 1]
   changed_when: false
+  with_items:
+    - "{{ groups['all'] }}"
 
 # Triggered when -vvvv is specified
 # https://docs.ansible.com/ansible/latest/modules/debug_module.html
 - name: DEBUG | Display all known facts about host
   debug:
-    var: hostvars[inventory_hostname]
+    var: hostvars[item]
     verbosity: "4"
+  with_items:
+    - "{{ groups['all'] }}"
 
 # Triggered when -vv is specified
 - name: DEBUG | Show python check results
   debug:
-    var: python_install_check.stdout
     verbosity: "2"
+    msg: >-
+        {{ item.item }} |
+        {{ 'Python is installed' if ( item.rc == 0)
+            else 'Python is NOT installed'
+        }}
+  with_items:
+    - "{{ python_install_check['results'] }}"
+  loop_control:
+    label: "{{ item.item }}: {{ item.rc }}"
 
 # Only occurs with containers without Python
 - name: Install Python
-  # TODO: not sure I have the syntax right here
-  raw: "{{ python_install_command | default(default_python_install_command) }}"
+  delegate_to: "{{ item['item'] }}"
+  raw: "{{ hostvars[item['item']]['python_install_command'] | default(lxc_containers_default_python_install_command) }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - "{{ python_install_check['results'] }}"
+  loop_control:
+    label: "{{ item.item }}: {{ item.rc }}"
+  register: python_install_results
   when:
-    - python_install_check.rc == 1
+    - item['rc'] == 1
+
+- name: DEBUG | Display Python installation results
+  debug:
+    var: python_install_results
+    verbosity: "2"
 
 ...

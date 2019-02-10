@@ -1,29 +1,46 @@
 ---
 
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
 # Purpose: Install Docker related configuration in containers that may be used
 # for Docker testing. A separate role is used to actually install Docker and
 # related packages into those containers
 
 - name: DOCKER | Create config file directory
+  delegate_to: "{{ item }}"
   become: yes
   file:
     state: directory
-    dest: "{{ docker_main_config_file | dirname }}"
+    dest: "{{ lxc_containers_docker_main_config_file | dirname }}"
     owner: root
     group: root
     mode: 0755
+  with_items:
+    - "{{ groups['all'] }}"
 
 - name: DOCKER | DEBUG | Display chosen storage driver
   debug:
+    # Set via defaults/main.yml, already in scope for localhost
     var: lxd_containers_docker_storage_driver
+    verbosity: "1"
+  with_items:
+    - "{{ groups['all'] }}"
 
 - name: DOCKER | Deploy base config file
+  delegate_to: "{{ item }}"
   become: yes
   template:
     src: '{{ lxd_containers_docker_config_file_template }}'
-    dest: "{{ docker_main_config_file }}"
+    dest: "{{ lxc_containers_docker_main_config_file }}"
     owner: root
     group: root
     mode: 0644
+  with_items:
+    - "{{ groups['all'] }}"
 
 ...

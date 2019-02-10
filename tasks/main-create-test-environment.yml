@@ -1,8 +1,11 @@
 ---
 
-# vim: ts=2:sw=2:et:ft=ansible
-# -*- mode: ansible; indent-tabs-mode: nil; tab-width: 2 -*-
-# code: language=ansible insertSpaces=true tabSize=2
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
 
 - name: HOST | Create custom LXD container profiles
   import_tasks: host-create-lxd-profiles.yml
@@ -17,17 +20,25 @@
   import_tasks: containers-bootstrap.yml
 
 # https://groups.google.com/forum/#!topic/Ansible-project/n5bYP5BIbcQ
-- name: Gather facts after finishing container bootstrapping
+- name: CONTAINERS | Gather facts after bootstrap process
   setup:
+    #gather_subset: network
   become: no
   # Any special meaning for this variable name?
   register: setup
+  delegate_to: "{{ item }}"
+  delegate_facts: yes
+  with_items:
+    - "{{ groups['all'] }}"
 
 - name: CONTAINERS | Install required packages
   import_tasks: containers-install-required-packages.yml
 
-- name: CONTAINERS | Basic configuration
-  import_tasks: containers-configure.yml
+- name: CONTAINERS | Configure accounts and groups
+  import_tasks: containers-configure-accounts-and-groups.yml
+
+- name: CONTAINERS | Configure environment
+  import_tasks: containers-configure-environment.yml
 
 - name: CONTAINERS | Deploy Docker configuration
   import_tasks: containers-deploy-docker-config.yml
