@@ -34,6 +34,31 @@
     - "{{ groups['all'] }}"
   when: lxd_containers_update_hosts_file
 
+- name: DEBUG | Display hostvars proxy server value
+  debug:
+    var: hostvars[item]['lxd_containers_proxy_server']
+    verbosity: "2"
+  with_items:
+    - "{{ groups['all'] }}"
+
+- name: DEBUG | Display role proxy server value
+  debug:
+    verbosity: "2"
+    var: lxd_containers_proxy_server
+
+- name: DEBUG | Display hostvars env file flag value
+  debug:
+    var: hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file']
+    verbosity: "2"
+  with_items:
+    - "{{ groups['all'] }}"
+
+- name: DEBUG | Display role env file flag value
+  debug:
+    verbosity: "2"
+    var: lxd_containers_add_proxy_to_etc_environment_file
+
+
 # https://askubuntu.com/questions/228530/updating-http-proxy-environment-variable
 # https://askubuntu.com/questions/866161/setting-path-variable-in-etc-environment-vs-profile
 - name: "Apply proxy settings via environment file in container"
@@ -48,12 +73,27 @@
       ftp_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
   with_items:
     - "{{ groups['all'] }}"
-  when:
-    - (lxd_containers_proxy_server is defined) or (hostvars[item]['lxd_containers_proxy_server'] is defined)
-    # This requirement is not needed since the role level lxd_containers_proxy_server variable
-    # is already set to an empty string and the default() filter used will fallback
-    # to using that empty string if the variable is not set at a higher level.
-    #- (lxd_containers_proxy_server != "") or (hostvars[item]['lxd_containers_proxy_server'] !="")
-    - lxd_containers_add_proxy_to_etc_environment_file
+  # Attempt to allow flexible override at playbook/inventory level with
+  # precedence explicitly honored.
+  when: >
+
+    (
+      lxd_containers_proxy_server is defined
+      or
+      hostvars[item]['lxd_containers_proxy_server'] is defined
+    )
+    and
+
+      (
+        (
+          hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] is defined and
+          hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file']
+        )
+        or
+        (
+          hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] is not defined and
+          lxd_containers_add_proxy_to_etc_environment_file
+        )
+      )
 
 ...
