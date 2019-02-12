@@ -10,7 +10,7 @@
 - name: Create service group
   delegate_to: "{{ item }}"
   group:
-    name: "{{ lxd_containers_service_group }}"
+    name: "{{ hostvars[item]['lxd_containers_service_group'] | default(lxd_containers_service_group) }}"
     state: present
     system: no
   with_items:
@@ -19,12 +19,12 @@
 - name: Create service user
   delegate_to: "{{ item }}"
   user:
-    name: "{{ lxd_containers_service_account }}"
+    name: "{{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }}"
     # Explicitly specify this in case the default behavior ever changes
     # Credit: @auadamw
     create_home: yes
     comment: Service account used by Ansible to configure system
-    group: "{{ lxd_containers_service_group }}"
+    group: "{{ hostvars[item]['lxd_containers_service_group'] | default(lxd_containers_service_group) }}"
     state: present
     system: no
   with_items:
@@ -33,8 +33,8 @@
 - name: "Create service account sudoers file in container"
   delegate_to: "{{ item }}"
   copy:
-    content: '{{ lxd_containers_service_account }} ALL=(ALL) NOPASSWD: ALL'
-    dest: "{{ lxd_containers_sudoers_include_file }}"
+    content: "{{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }} ALL=(ALL) NOPASSWD: ALL"
+    dest: "{{ hostvars[item]['lxd_containers_sudoers_include_file'] | default(lxd_containers_sudoers_include_file) }}"
     owner: root
     group: root
     mode: 0440
@@ -49,7 +49,7 @@
       delegate_facts: true
       set_fact:
         lxd_host_ssh_public_key_for_containers_content: >-
-          {{ lookup('file', lxd_host_ssh_public_key_for_containers) }}
+          {{ lookup('file', hostvars[item]['lxd_host_ssh_public_key_for_containers'] | default(lxd_host_ssh_public_key_for_containers)) }}
       with_items:
         - "{{ groups['all'] }}"
 

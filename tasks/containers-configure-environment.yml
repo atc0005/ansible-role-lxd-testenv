@@ -43,14 +43,17 @@
     dest: "{{ lxd_containers_environment_file }}"
     marker: "# {mark} This part managed by Ansible"
     block: |
-      http_proxy="{{ lxd_containers_proxy_server }}"
-      https_proxy="{{ lxd_containers_proxy_server }}"
-      ftp_proxy="{{ lxd_containers_proxy_server }}"
+      http_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
+      https_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
+      ftp_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
   with_items:
     - "{{ groups['all'] }}"
   when:
-    - lxd_containers_proxy_server is defined
-    - lxd_containers_proxy_server != ""
+    - (lxd_containers_proxy_server is defined) or (hostvars[item]['lxd_containers_proxy_server'] is defined)
+    # This requirement is not needed since the role level lxd_containers_proxy_server variable
+    # is already set to an empty string and the default() filter used will fallback
+    # to using that empty string if the variable is not set at a higher level.
+    #- (lxd_containers_proxy_server != "") or (hostvars[item]['lxd_containers_proxy_server'] !="")
     - lxd_containers_add_proxy_to_etc_environment_file
 
 ...

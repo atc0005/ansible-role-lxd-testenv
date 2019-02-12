@@ -16,7 +16,7 @@
   become: yes
   file:
     state: directory
-    dest: "{{ lxc_containers_docker_main_config_file | dirname }}"
+    dest: "{{ hostvars[item]['lxd_containers_docker_main_config_file'] | default(lxd_containers_docker_main_config_file) | dirname }}"
     owner: root
     group: root
     mode: 0755
@@ -26,7 +26,7 @@
 - name: DOCKER | DEBUG | Display chosen storage driver
   debug:
     # Set via defaults/main.yml, already in scope for localhost
-    var: lxd_containers_docker_storage_driver
+    var: hostvars[item]['lxd_containers_docker_storage_driver'] | default(lxd_containers_docker_storage_driver)
     verbosity: "1"
   with_items:
     - "{{ groups['all'] }}"
@@ -36,7 +36,7 @@
   become: yes
   template:
     src: '{{ lxd_containers_docker_config_file_template }}'
-    dest: "{{ lxc_containers_docker_main_config_file }}"
+    dest: "{{ hostvars[item]['lxd_containers_docker_main_config_file'] | default(lxd_containers_docker_main_config_file) }}"
     owner: root
     group: root
     mode: 0644

@@ -79,6 +79,9 @@ lxd_containers_add_proxy_to_etc_environment_file: true
 # Server listed in the Ansible module examples
 lxd_containers_image_server: "https://images.linuxcontainers.org"
 
+# Defines what container image is used. Defaults to Ubuntu 16.04 LTS AMD64.
+lxd_containers_image_source: "ubuntu/xenial/amd64"
+
 # Assume that containers should be created when this role is used
 # unless overridden
 lxd_containers_create: true
@@ -104,7 +107,7 @@ lxd_containers_profiles:
   - "default"
 
 # https://docs.docker.com/config/daemon/
-lxc_containers_docker_main_config_file: "/etc/docker/daemon.json"
+lxd_containers_docker_main_config_file: "/etc/docker/daemon.json"
 lxd_containers_docker_config_file_template: "docker-daemon-config.json.j2"
 
 # See Docker storage drivers for valid options, BUT know that some may not

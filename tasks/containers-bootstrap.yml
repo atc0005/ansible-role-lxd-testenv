@@ -10,7 +10,7 @@
 - name: Confirm python is installed in container
   delegate_to: "{{ item }}"
   #delegate_facts: true
-  raw: "test -e {{ lxc_containers_python_path }}"
+  raw: "test -e {{ hostvars[item]['lxd_containers_python_path'] | default(lxd_containers_python_path) }}"
   register: python_install_check
   failed_when: python_install_check['rc'] not in [0, 1]
   changed_when: false
