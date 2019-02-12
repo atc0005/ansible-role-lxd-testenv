@@ -10,9 +10,8 @@
 - name: Install extra packages
   delegate_to: "{{ item }}"
   package:
-    name: "{{ lxd_containers_packages_extra }}"
+    name: "{{ hostvars[item]['lxd_containers_packages_extra'] | default(lxd_containers_packages_extra) }}"
     state: present
   with_items:
     - "{{ groups['all'] }}"
-
 ...
