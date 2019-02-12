@@ -43,7 +43,7 @@
 # Only occurs with containers without Python
 - name: Install Python
   delegate_to: "{{ item['item'] }}"
-  raw: "{{ hostvars[item['item']]['python_install_command'] | default(lxc_containers_default_python_install_command) }}"
+  raw: "{{ hostvars[item['item']]['python_install_command'] | default(lxd_containers_default_python_install_command) }}"
   args:
     executable: /bin/bash
   with_items:
