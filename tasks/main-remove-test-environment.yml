@@ -13,4 +13,7 @@
 - name: Remove LXD containers
   import_tasks: host-remove-containers.yml
 
+- name: Remove LXD profiles
+  import_tasks: host-remove-lxd-profiles.yml
+
 ...
