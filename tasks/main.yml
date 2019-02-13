@@ -7,6 +7,8 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
+# TODO: Apply assert statements here to validate role use
+
 - name: "Import tasks to {{ state }} test environment"
   import_tasks: "main-{{ state }}-test-environment.yml"
 

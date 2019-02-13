@@ -20,16 +20,8 @@
   import_tasks: containers-bootstrap.yml
 
 # https://groups.google.com/forum/#!topic/Ansible-project/n5bYP5BIbcQ
-- name: CONTAINERS | Gather facts after bootstrap process
-  setup:
-    #gather_subset: network
-  become: no
-  # Any special meaning for this variable name?
-  register: setup
-  delegate_to: "{{ item }}"
-  delegate_facts: yes
-  with_items:
-    - "{{ groups['all'] }}"
+- name: CONTAINERS | Gather facts from containers with Python present
+  import_tasks: containers-gather-facts.yml
 
 - name: CONTAINERS | Install required packages
   import_tasks: containers-install-required-packages.yml

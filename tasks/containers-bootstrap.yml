@@ -7,18 +7,26 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
-- name: Confirm python is installed in container
+- name: Check for Python installation
   delegate_to: "{{ item }}"
-  #delegate_facts: true
   raw: "test -e {{ hostvars[item]['lxd_containers_python_path'] | default(lxd_containers_python_path) }}"
   register: python_install_check
   failed_when: python_install_check['rc'] not in [0, 1]
   changed_when: false
   with_items:
     - "{{ groups['all'] }}"
+  # NOTE: Do not apply conditions, run this task for all containers
+  #
+  # when: >
+  #   (
+  #     hostvars[item]['lxd_containers_bootstrap'] | default(false)
+  #     or hostvars[item]['lxd_containers_bootstrap'] is not defined
+  #     and lxd_containers_bootstrap | default(false)
+  #   )
 
-# Triggered when -vvvv is specified
-# https://docs.ansible.com/ansible/latest/modules/debug_module.html
+
+# Require high verbosity command-line flag since this displays a lot of
+# information that is not needed during normal role operation
 - name: DEBUG | Display all known facts about host
   debug:
     var: hostvars[item]
@@ -26,21 +34,28 @@
   with_items:
     - "{{ groups['all'] }}"
 
-# Triggered when -vv is specified
+
 - name: DEBUG | Show python check results
   debug:
     verbosity: "2"
-    msg: >-
-        {{ item.item }} |
-        {{ 'Python is installed' if ( item.rc == 0)
-            else 'Python is NOT installed'
-        }}
+    var: item
   with_items:
     - "{{ python_install_check['results'] }}"
   loop_control:
-    label: "{{ item.item }}: {{ item.rc }}"
+    label: >
+      {{ item['item'] }} |
+      {{ 'Python is installed' if ( item['rc'] == 0)
+          else 'Python is NOT installed'
+      }}
+  # Help prevent cascading errors if something prevented this variable from
+  # being properly registered earlier (e.g., host-specific opt-out)
+  when:
+    - python_install_check is defined
+    - python_install_check['results'] is defined
+    - "'rc' in item"
+    - "'item' in item"
 
-# Only occurs with containers without Python
+# Limited to containers without Python
 - name: Install Python
   delegate_to: "{{ item['item'] }}"
   raw: "{{ hostvars[item['item']]['python_install_command'] | default(lxd_containers_default_python_install_command) }}"
@@ -49,14 +64,25 @@
   with_items:
     - "{{ python_install_check['results'] }}"
   loop_control:
-    label: "{{ item.item }}: {{ item.rc }}"
+    label: >
+      {{ item['item'] }} |
+      {{ 'found previously' if ( item['rc'] == 0)
+          else 'not found previously'
+      }}
   register: python_install_results
-  when:
-    - item['rc'] == 1
+  when: >
+    item['rc'] == 1
+    and
+    (
+      hostvars[item.item]['lxd_containers_bootstrap'] | default(false)
+      or hostvars[item.item]['lxd_containers_bootstrap'] is not defined
+      and lxd_containers_bootstrap | default(false)
+    )
 
 - name: DEBUG | Display Python installation results
   debug:
     var: python_install_results
     verbosity: "2"
+
 
 ...

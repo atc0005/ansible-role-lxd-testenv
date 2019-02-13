@@ -7,6 +7,12 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
+# Flag which controls whether LXD profiles are created during setup process
+lxd_host_create_profiles: true
+
+# Flag which controls whether LXD profiles are removed during teardown
+lxd_host_remove_profiles: false
+
 # Host copy of file. Updated to reflect host keys of all containers.
 lxd_host_ssh_user_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
 lxd_host_ssh_system_known_hosts_file: "/etc/ssh/known_hosts"
@@ -86,18 +92,24 @@ lxd_containers_image_source: "ubuntu/xenial/amd64"
 # unless overridden
 lxd_containers_create: true
 
-# Flag that controls whether Python, sudo and other packages are installed as
-# part of preparing new containers for management by Ansible.
+# Flag that controls whether Python, sudo and other REQUIRED packages are
+# installed as part of preparing new containers for management by Ansible.
 lxd_containers_bootstrap: true
 
-# Create service account, groups, enable SSH at boot, etc
+# Create service account, groups, enable SSH at boot, install extra packages
+# and perform other additional tasks that further alter the state of
+# containers beyond what the bootstrap phase (controlled via
+# 'lxd_containers_bootstrap') already handles
 lxd_containers_configure: true
 
+# Essential packages installed in each container as part of the bootstrap
+# phase. Controlled via the 'lxd_containers_bootstrap' flag.
 lxd_containers_packages_required:
   - "openssh-server"
   - "sudo"
 
-# Non-essential packages installed in each container
+# Non-essential packages installed in each container as part of the
+# configuration phase. Controlled via the 'lxd_containers_configure' flag.
 lxd_containers_packages_extra:
   # mainly a placeholder, but useful on its own
   - "nano"

@@ -18,7 +18,8 @@
     state: absent
 
   # Should be overridden at the playbook level (or higher)
-  when: lxd_host_remove_profiles
+  when:
+    - lxd_host_remove_profiles | default(false)
 
 
 ...

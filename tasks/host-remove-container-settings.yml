@@ -15,7 +15,10 @@
     marker: "# {mark} This part managed by Ansible"
     # By setting to an empty string, the block contents will be removed
     block: ""
-  when: lxd_host_update_etc_hosts_file
+  when:
+    - lxd_host_update_etc_hosts_file | default(false)
+    - lxd_containers_etc_hosts_file is defined
+    - lxd_containers_etc_hosts_file != ""
   tags:
     - remove
 
@@ -29,7 +32,9 @@
     # By setting to an empty string, the block contents will be removed
     block: ""
   when:
-    - lxd_host_update_ssh_client_user_config_file
+    - lxd_host_update_ssh_client_user_config_file | default(false)
+    - lxd_host_ssh_client_user_config_file is defined
+    - lxd_host_ssh_client_user_config_file != ""
   tags:
     - remove
 
@@ -43,7 +48,9 @@
     # By setting to an empty string, the block contents will be removed
     block: ""
   when:
-    - lxd_host_update_ssh_client_system_config_file
+    - lxd_host_update_ssh_client_system_config_file | default(false)
+    - lxd_host_ssh_client_system_config_file is defined
+    - lxd_host_ssh_client_system_config_file != ""
   tags:
     - remove
 
@@ -57,7 +64,9 @@
     block: ""
     # By setting to an empty string, the block contents will be removed
   when:
-    - lxd_host_update_system_known_hosts_file
+    - lxd_host_update_system_known_hosts_file | default(false)
+    - lxd_host_ssh_system_known_hosts_file is defined
+    - lxd_host_ssh_system_known_hosts_file != ""
 
 - name: Remove container host keys from SSH client user config on host
   delegate_to: localhost
@@ -69,6 +78,8 @@
     block: ""
     # By setting to an empty string, the block contents will be removed
   when:
-    - lxd_host_update_user_known_hosts_file
+    - lxd_host_update_user_known_hosts_file | default(false)
+    - lxd_host_ssh_user_known_hosts_file is defined
+    - lxd_host_ssh_user_known_hosts_file != ""
 
 ...

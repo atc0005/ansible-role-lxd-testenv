@@ -15,8 +15,28 @@
     system: no
   with_items:
     - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Service group: {{ hostvars[item]['lxd_containers_service_group'] | default(lxd_containers_service_group) }}
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_service_group'] is defined
+      and hostvars[item]['lxd_containers_service_group'] != ""
+      or hostvars[item]['lxd_containers_service_group'] is not defined
+      and lxd_containers_service_group is defined
+      and lxd_containers_service_group != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
 
-- name: Create service user
+- name: Create service user account
   delegate_to: "{{ item }}"
   user:
     name: "{{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }}"
@@ -29,8 +49,38 @@
     system: no
   with_items:
     - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Service group: {{ hostvars[item]['lxd_containers_service_group'] | default(lxd_containers_service_group) }} |
+      Service account: {{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }}
+  # hostvars setting is optional, but ensure these are valid before proceeding
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_service_group'] is defined
+      and hostvars[item]['lxd_containers_service_group'] != ""
+      or hostvars[item]['lxd_containers_service_group'] is not defined
+      and lxd_containers_service_group is defined
+      and lxd_containers_service_group != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_service_account'] is defined
+      and hostvars[item]['lxd_containers_service_account'] != ""
+      or hostvars[item]['lxd_containers_service_account'] is not defined
+      and lxd_containers_service_account is defined
+      and lxd_containers_service_account != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
 
-- name: "Create service account sudoers file in container"
+- name: "Create service user account sudoers file in container"
   delegate_to: "{{ item }}"
   copy:
     content: "{{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }} ALL=(ALL) NOPASSWD: ALL"
@@ -40,11 +90,40 @@
     mode: 0440
   with_items:
     - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Service account: {{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }} |
+      Config file: {{ hostvars[item]['lxd_containers_sudoers_include_file'] | default(lxd_containers_sudoers_include_file) }}
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_service_account'] is defined
+      and hostvars[item]['lxd_containers_service_account'] != ""
+      or hostvars[item]['lxd_containers_service_account'] is not defined
+      and lxd_containers_service_account is defined
+      and lxd_containers_service_account != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_sudoers_include_file'] is defined
+      and hostvars[item]['lxd_containers_sudoers_include_file'] != ""
+      or hostvars[item]['lxd_containers_sudoers_include_file'] is not defined
+      and lxd_containers_sudoers_include_file is defined
+      and lxd_containers_sudoers_include_file != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
 
 - name: Deploy SSH Public key for container management
   block:
 
-    - name: Load SSH public key for containers from current user profile
+    - name: Retrieve SSH public key for containers
       delegate_to: "{{ item }}"
       delegate_facts: true
       set_fact:
@@ -53,17 +132,31 @@
       with_items:
         - "{{ groups['all'] }}"
 
-    - name: Deploy current user SSH public key to specific users in container
-      delegate_to: "{{ item[1] }}"
+    - name: Deploy SSH public key to root user in container
+      delegate_to: "{{ item }}"
       delegate_facts: true
       authorized_key:
-        user: "{{ item[0] }}"
+        user: "root"
         state: present
-        key: "{{ hostvars[item[1]]['lxd_host_ssh_public_key_for_containers_content'] }}"
+        key: "{{ hostvars[item]['lxd_host_ssh_public_key_for_containers_content'] }}"
       register: authorized_key_insert_output
-      with_nested:
-        - [ 'root', 'ansible' ]
+      with_items:
         - "{{ groups['all'] }}"
+      loop_control:
+        label: "{{ item }} | User: root"
+
+    - name: Deploy SSH public key to service account in container
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      authorized_key:
+        user: "{{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }}"
+        state: present
+        key: "{{ hostvars[item]['lxd_host_ssh_public_key_for_containers_content'] }}"
+      register: authorized_key_insert_output
+      with_items:
+        - "{{ groups['all'] }}"
+      loop_control:
+        label: "{{ item }} | User: {{ hostvars[item]['lxd_containers_service_account'] | default(lxd_containers_service_account) }}"
 
   rescue:
 
@@ -83,5 +176,30 @@
 
     - fail:
         msg: "Failed to deploy key to users in containers"
+
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_service_account'] is defined
+      and hostvars[item]['lxd_containers_service_account'] != ""
+      or hostvars[item]['lxd_containers_service_account'] is not defined
+      and lxd_containers_service_account is defined
+      and lxd_containers_service_account != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_host_ssh_public_key_for_containers'] is defined
+      and hostvars[item]['lxd_host_ssh_public_key_for_containers'] != ""
+      or hostvars[item]['lxd_host_ssh_public_key_for_containers'] is not defined
+      and lxd_host_ssh_public_key_for_containers is defined
+      and lxd_host_ssh_public_key_for_containers != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
 
 ...

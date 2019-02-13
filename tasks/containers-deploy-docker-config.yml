@@ -11,6 +11,17 @@
 # for Docker testing. A separate role is used to actually install Docker and
 # related packages into those containers
 
+- name: DOCKER | DEBUG | Display config file directory
+  debug:
+    msg: "{{ hostvars[item]['lxd_containers_docker_main_config_file'] | default(lxd_containers_docker_main_config_file) | dirname }}"
+    verbosity: "2"
+  with_items:
+    - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Config dir: {{ hostvars[item]['lxd_containers_docker_main_config_file'] | default(lxd_containers_docker_main_config_file) | dirname }}
+
 - name: DOCKER | Create config file directory
   delegate_to: "{{ item }}"
   become: yes
@@ -22,6 +33,26 @@
     mode: 0755
   with_items:
     - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Config dir: {{ hostvars[item]['lxd_containers_docker_main_config_file'] | default(lxd_containers_docker_main_config_file) | dirname }}
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_docker_main_config_file'] is defined
+      and hostvars[item]['lxd_containers_docker_main_config_file'] != ""
+      or hostvars[item]['lxd_containers_docker_main_config_file'] is not defined
+      and lxd_containers_docker_main_config_file is defined
+      and lxd_containers_docker_main_config_file != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
 
 - name: DOCKER | DEBUG | Display chosen storage driver
   debug:
@@ -30,6 +61,10 @@
     verbosity: "1"
   with_items:
     - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Storage driver: {{ hostvars[item]['lxd_containers_docker_storage_driver'] | default(lxd_containers_docker_storage_driver) }}
 
 - name: DOCKER | Deploy base config file
   delegate_to: "{{ item }}"
@@ -42,5 +77,26 @@
     mode: 0644
   with_items:
     - "{{ groups['all'] }}"
+  loop_control:
+    label: >
+      {{ item }} |
+      Config file: {{ hostvars[item]['lxd_containers_docker_main_config_file'] | default(lxd_containers_docker_main_config_file) }} |
+      Storage driver: {{ hostvars[item]['lxd_containers_docker_storage_driver'] | default(lxd_containers_docker_storage_driver) }}
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_docker_main_config_file'] is defined
+      and hostvars[item]['lxd_containers_docker_main_config_file'] != ""
+      or hostvars[item]['lxd_containers_docker_main_config_file'] is not defined
+      and lxd_containers_docker_main_config_file is defined
+      and lxd_containers_docker_main_config_file != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
 
 ...
