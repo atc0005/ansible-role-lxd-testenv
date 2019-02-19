@@ -1,0 +1,197 @@
+  # Explanation:
+  #
+  # As long as one of the values in the first set evaluates to true (with
+  # short-circuit behavior for hostvar since it is listed first) along
+  # with a value from the second set evaluating to true, the whole 'when'
+  # clause evaluates to true
+  when: >
+    (
+      hostvars[item]['lxd_containers_update_hosts_file'] | default(false)
+      or hostvars[item]['lxd_containers_update_hosts_file'] is not defined
+      and lxd_containers_update_hosts_file | default(false)
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+
+
+---
+
+  # NOTE: Working
+  #
+  # if hostvars is not defined (or if already false) then false and next check is evaluated (because of OR)
+  # if hostvars it not defined and lxd_containers_configure is true then this executes
+  when: >
+      (
+        hostvars[item]['lxd_containers_configure'] | default(false)
+        or hostvars[item]['lxd_containers_configure'] is not defined
+        and lxd_containers_configure | default(false)
+      )
+
+---
+
+- name: "Apply proxy settings via environment file in container"
+  delegate_to: "{{ item }}"
+  run_once: true
+  blockinfile:
+    dest: "{{ lxd_containers_environment_file }}"
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      http_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
+      https_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
+      ftp_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
+  with_items:
+    - "{{ groups['all'] }}"
+  when: >
+    (
+      hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] | default(false)
+      or hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] is not defined
+      and lxd_containers_add_proxy_to_etc_environment_file
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_proxy_server'] | default(false)
+      or hostvars[item]['lxd_containers_proxy_server'] is not defined
+      and lxd_containers_proxy_server
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+
+
+
+---
+
+
+  when: >
+    (
+      hostvars[item]['lxd_containers_packages_required'] | default(false)
+      or hostvars[item]['lxd_containers_packages_required'] is not defined
+      and lxd_containers_packages_required | default(false)
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_bootstrap'] | default(false)
+      or hostvars[item]['lxd_containers_bootstrap'] is not defined
+      and lxd_containers_bootstrap | default(false)
+    )
+
+---
+
+hostvars[item]['python_installed'] | default(false)
+
+---
+
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+
+---
+
+
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_docker_main_config_file'] != "" | default(false)
+      or hostvars[item]['lxd_containers_docker_main_config_file'] is not defined
+      and lxd_containers_docker_main_config_file != "" | default(false)
+    )
+
+---
+
+# Below is the format I think I should use for all 'when' clauses.
+# It is verbose, but better covers edge cases. I can simplify later
+# once I have proven it works 100%.
+#
+# The lxd_containers_configure flag is boolean, so it should be safe
+# to skip 'is defined' checks with use of 'default(false)'
+
+  when: >
+    hostvars[item]['python_installed'] | default(false)
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_docker_main_config_file'] is defined
+      and hostvars[item]['lxd_containers_docker_main_config_file'] != ""
+      or hostvars[item]['lxd_containers_docker_main_config_file'] is not defined
+      and lxd_containers_docker_main_config_file is defined
+      and lxd_containers_docker_main_config_file != ""
+    )
+    and
+    (
+      hostvars[item]['lxd_containers_configure'] | default(false)
+      or hostvars[item]['lxd_containers_configure'] is not defined
+      and lxd_containers_configure | default(false)
+    )
+
+
+# Completed (I think):
+#
+# containers-bootstrap.yml
+# containers-configure-accounts-and-groups.yml
+# containers-configure-environment.yml
+# containers-deploy-docker-config.yml
+# containers-gather-facts.yml
+# host-add-container-settings.yml
+# host-create-containers.yml
+# host-create-lxd-profiles.yml
+# host-generate-ssh-keypair.yml
+# host-remove-container-settings.yml
+# host-remove-containers.yml
+# host-remove-lxd-profiles.yml
+# main-create-test-environment.yml
+# main-remove-test-environment.yml
+
+  # when: >
+  #   hostvars[item]['python_installed'] | default(false)
+  #   and
+  #   (
+  #     hostvars[item]['lxd_containers_service_account'] is defined
+  #     and hostvars[item]['lxd_containers_service_account'] != ""
+  #     or hostvars[item]['lxd_containers_service_account'] is not defined
+  #     and lxd_containers_service_account is defined
+  #     and lxd_containers_service_account != ""
+  #   )
+  #   and
+  #   (
+  #     hostvars[item]['lxd_host_ssh_public_key_for_containers'] is defined
+  #     and hostvars[item]['lxd_host_ssh_public_key_for_containers'] != ""
+  #     or hostvars[item]['lxd_host_ssh_public_key_for_containers'] is not defined
+  #     and lxd_host_ssh_public_key_for_containers is defined
+  #     and lxd_host_ssh_public_key_for_containers != ""
+  #   )
+  #   and
+  #   (
+  #     hostvars[item]['lxd_containers_configure'] | default(false)
+  #     or hostvars[item]['lxd_containers_configure'] is not defined
+  #     and lxd_containers_configure | default(false)
+  #   )

@@ -17,11 +17,14 @@
     dest: "{{ lxd_host_etc_hosts_file }}"
     marker: "# {mark} This part managed by Ansible"
     block: |
-      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
+      {% for h in groups['all'] %}
+      {% if hostvars[h].ansible_default_ipv4 is defined
+          and hostvars[h].ansible_default_ipv4.address is defined %}
       {{ hostvars[h].ansible_default_ipv4.address }} {{ h }}
+      {% endif %}
       {% endfor %}
   when:
-    - lxd_host_update_etc_hosts_file
+    - lxd_host_update_etc_hosts_file | default(false)
 
 - name: "HOST | Add container host keys to {{ lxd_host_ssh_system_known_hosts_file }}"
   delegate_to: localhost
@@ -44,7 +47,7 @@
       {{ h }} ssh-ed25519 {{ hostvars[h]['ansible_ssh_host_key_ed25519_public'] }}
       {% endfor %}
   when:
-    - lxd_host_update_system_known_hosts_file
+    - lxd_host_update_system_known_hosts_file | default(false)
 
 - name: "HOST | Add container host keys to {{ lxd_host_ssh_user_known_hosts_file }}"
   delegate_to: localhost
@@ -67,7 +70,8 @@
       {{ h }} ssh-ed25519 {{ hostvars[h]['ansible_ssh_host_key_ed25519_public'] }}
       {% endfor %}
   when:
-    - lxd_host_update_user_known_hosts_file
+    # Should be overridden at the playbook level (or higher)
+    - lxd_host_update_user_known_hosts_file | default(false)
 
 - name: "HOST | Add container host entries to {{ lxd_host_ssh_client_system_config_file }}"
   delegate_to: localhost
@@ -78,16 +82,20 @@
     dest: "{{ lxd_host_ssh_client_system_config_file }}"
     marker: "# {mark} This part managed by Ansible"
     block: |
-      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
-      # LXD test container
+      # LXD test container entries
+      {% for h in groups['all'] %}
+      {% if hostvars[h].ansible_default_ipv4 is defined
+          and hostvars[h].ansible_default_ipv4.address is defined %}
       Host {{ h }} {{ hostvars[h].ansible_default_ipv4.address }}
         StrictHostKeyChecking no
         UserKnownHostsFile=/dev/null
         #User root
         LogLevel ERROR
+      {% endif %}
       {% endfor %}
   when:
-    - lxd_host_update_ssh_client_system_config_file
+    # Should be overridden at the playbook level (or higher)
+    - lxd_host_update_ssh_client_system_config_file | default(false)
   # Intended to help prevent overwrites
   run_once: true
 
@@ -100,17 +108,18 @@
     dest: "{{ lxd_host_ssh_client_user_config_file }}"
     marker: "# {mark} This part managed by Ansible"
     block: |
-      {% for h in groups['all'] if hostvars[h].ansible_default_ipv4.address is defined %}
-      # LXD test container
+      # LXD test container entries
+      {% for h in groups['all'] %}
+      {% if hostvars[h].ansible_default_ipv4 is defined
+          and hostvars[h].ansible_default_ipv4.address is defined %}
       Host {{ h }} {{ hostvars[h].ansible_default_ipv4.address }}
         StrictHostKeyChecking no
         UserKnownHostsFile=/dev/null
         #User root
         LogLevel ERROR
+      {% endif %}
       {% endfor %}
   when:
-    - lxd_host_update_ssh_client_user_config_file
-  # Intended to help prevent overwrites
-  run_once: true
+    - lxd_host_update_ssh_client_user_config_file | default(false)
 
 ...

@@ -24,4 +24,7 @@
         "linux.kernel_modules": "overlay"
     description: Allow use of Docker in LXD containers
 
+  # Should be overridden at the playbook level (or higher)
+  when: lxd_host_create_profiles | default(false)
+
 ...

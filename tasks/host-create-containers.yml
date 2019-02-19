@@ -38,6 +38,8 @@
       debug:
         var: container_creation_results
         verbosity: 1
+  # Should be overridden at the playbook level (or higher)
+  when: lxd_containers_create | default(false)
   tags:
     - create
 

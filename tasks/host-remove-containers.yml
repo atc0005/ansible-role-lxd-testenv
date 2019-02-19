@@ -7,11 +7,6 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
-# make sure all containers are running so that we can retrieve relevant
-# info and then prune that info from the host (e.g., known_hosts, /etc/hosts)
-# - name: Ensure containers are running so we can pull required details
-#   import_tasks: containers-start.yml
-
 - name: Stop containers
   delegate_to: localhost
   # Intended to allow external removal of containers without risk of entirely
@@ -24,8 +19,8 @@
   with_items:
     - "{{ groups['all'] }}"
   when:
-    - lxd_host_remove_containers
-    - lxd_host_stop_containers_before_removal
+    - lxd_host_remove_containers | default(false)
+    - lxd_host_stop_containers_before_removal | default(false)
   tags:
     - remove
 
@@ -37,7 +32,8 @@
     timeout: 90
   with_items:
     - "{{ groups['all'] }}"
-  when: lxd_host_remove_containers
+  when:
+    - lxd_host_remove_containers | default(false)
   tags:
     - remove
 
