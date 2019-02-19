@@ -1,5 +1,36 @@
 # Ansible Role: LXD Test Environment (lxd-testenv)
 
+## Table of Contents
+
+- [Ansible Role: LXD Test Environment (lxd-testenv)](#ansible-role-lxd-test-environment-lxd-testenv)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Limitations](#limitations)
+  - [WARNINGS](#warnings)
+  - [Requirements](#requirements)
+  - [Role Variables](#role-variables)
+    - [Variables specific to the LXD host](#variables-specific-to-the-lxd-host)
+    - [Variables specific to LXD containers created by this role](#variables-specific-to-lxd-containers-created-by-this-role)
+      - [Scope of container-specific variables](#scope-of-container-specific-variables)
+      - ["Bootstrap" vs "Configure" phases/tasks](#%22bootstrap%22-vs-%22configure%22-phasestasks)
+  - [Dependencies](#dependencies)
+  - [Example Playbooks](#example-playbooks)
+    - [Setup test environment](#setup-test-environment)
+    - [Teardown/Remove test environment](#teardownremove-test-environment)
+  - [Installing the role](#installing-the-role)
+    - [Create `requirements.yml` file](#create-requirementsyml-file)
+      - [Specific stable release version](#specific-stable-release-version)
+      - [Latest from the `master` branch](#latest-from-the-master-branch)
+    - [Use `requirements.yml` file to install role](#use-requirementsyml-file-to-install-role)
+      - [Option 1: Within your home directory](#option-1-within-your-home-directory)
+      - [Option 2: Within a `roles` directory in the same location as your playbooks](#option-2-within-a-roles-directory-in-the-same-location-as-your-playbooks)
+      - [Option 3: System-wide for all users](#option-3-system-wide-for-all-users)
+  - [License](#license)
+  - [Author Information](#author-information)
+  - [References](#references)
+
+## Overview
+
 Ansible role used to generate or teardown a
 [LXD](https://linuxcontainers.org/lxd/getting-started-cli/) container test
 environment. This role is intended to be used as a base for testing other
@@ -50,6 +81,12 @@ easy to override default values.
 
 ### Variables specific to the LXD host
 
+These variables are intended to be set at the playbook or role level and not
+per Ansible "host" or LXD container. If you find that you are able to alter
+behavior of the playbook by defining one of these values at a host level
+(excluding "localhost"), please open an issue to report the bug. Thanks in
+advance. :)
+
 | Variable                                        | Default value               | Purpose                                                                                                                                                                                                                         |
 | ----------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `state`                                         | `create`                    | Flag with valid values of `create` or `remove`. Used to control whether a test environment will be created or removed/destroyed.                                                                                                |
@@ -72,6 +109,39 @@ easy to override default values.
 | `lxd_host_remove_containers`                    | `false`                     | Controls whether containers are removed as part of teardown process. Defaults to `false`.                                                                                                                                       |
 
 ### Variables specific to LXD containers created by this role
+
+#### Scope of container-specific variables
+
+Though these variables are specific to LXD containers, each variable can either
+be set per Ansible "host" (i.e., per LXD container managed by this role) or as
+a playbook-wide variable to control behavior for all containers managed by
+this role. If during your use of this role you find that you are unable to
+use one of these variables equally well in both locations please open an issue
+and report the bug. Thanks in advance. :)
+
+#### "Bootstrap" vs "Configure" phases/tasks
+
+This role makes a distinction between the Bootstrap and Configure phases and
+offers boolean flags to control whether tasks applicable to those phases
+are run.
+
+**Bootstrap** tasks perform the bare-minimum changes to LXD containers in order
+to run native Ansible modules against them (which includes basic fact
+gathering).
+
+**Configure** tasks perform non-essential, but expected provisioning tasks that
+are normally applied when standing up a fresh system. Some examples:
+
+- service status changes
+- package installations
+- creation of service accounts and groups
+- global environment changes
+
+This role exposes both flags as options that can be set for one or all
+containers in order to provision containers in the desired state for further
+work. For example, you may wish to provision a fresh container with minimal
+changes in order to test basic configuration changes provided by another
+playbook or tool.
 
 | Variable                                           | Default value                        | Purpose                                                                                                                                                                                                                                                                                                                  |
 | -------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
