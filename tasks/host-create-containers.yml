@@ -7,6 +7,123 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
+
+#############################################################################
+# Create local values based off of potential user-supplied values. These
+# local values are (lightly) validated and if a problematic combination is
+# found the playbook user is notified
+#############################################################################
+
+- name: Set container source server
+  set_fact:
+    lxd_containers_source_set_server: "{{ lxd_containers_source_server }}"
+  when:
+    - lxd_containers_source_server is defined
+    - lxd_containers_source_server != ""
+
+- name: Set container source protocol
+  set_fact:
+    lxd_containers_source_set_protocol: "{{ lxd_containers_source_protocol }}"
+  when:
+      - lxd_containers_source_protocol is defined
+      - lxd_containers_source_protocol != ""
+
+- name: Set container source fingerprint
+  set_fact:
+    lxd_containers_source_set_fingerprint: "{{ lxd_containers_source_fingerprint }}"
+  when:
+    - lxd_containers_source_fingerprint is defined
+    - lxd_containers_source_fingerprint != ""
+
+# Only set this when fingerprint is not already configured with user value
+- name: Set container source alias
+  set_fact:
+    lxd_containers_source_set_alias: "{{ lxd_containers_source_alias }}"
+  when: >
+    (
+      lxd_containers_source_alias is defined
+      and lxd_containers_source_alias != ""
+    )
+    and
+    (
+      lxd_containers_source_set_fingerprint is not defined
+      or lxd_containers_source_set_fingerprint is defined
+      and lxd_containers_source_set_fingerprint == ""
+    )
+
+
+#############################################################################
+# Debugging
+#############################################################################
+
+- name: DEBUG | Display source alias
+  debug:
+    var: lxd_containers_source_set_alias
+    verbosity: "1"
+
+- name: DEBUG | Display source fingerprint
+  debug:
+    var: lxd_containers_source_set_fingerprint
+    verbosity: "1"
+
+- name: DEBUG | Display source server
+  debug:
+    var: lxd_containers_source_set_server
+    verbosity: "1"
+
+- name: DEBUG | Display source protocol
+  debug:
+    var: lxd_containers_source_set_protocol
+    verbosity: "1"
+
+
+#############################################################################
+# Validate combination of user-supplied & default variables
+#############################################################################
+
+- name: Fail when not provided all values needed to reliabily create containers
+  block:
+
+    - name: DEBUG | Display current combination of container creation values
+      debug:
+        msg: >-
+          Current combination of container creation values:
+          (Container name: {{ inventory_hostname }})
+          (Fingerprint: {{ lxd_containers_source_set_fingerprint | default('') }}),
+          (Server: {{ lxd_containers_source_set_server | default(lxd_containers_default_source_server, true) }}),
+          (Mode: {{ lxd_containers_source_mode }}),
+          (Protocol: {{ lxd_containers_default_source_protocol }}),
+          (Type: {{ lxd_containers_source_type }}),
+          (Alias: {{ lxd_containers_source_set_alias | default('') }}),
+          (Profiles: {{ lxd_containers_profiles }}),
+          (Timeout: {{ lxd_containers_create_timeout }}),
+          (Wait for IPv4: {{ lxd_containers_wait_for_ipv4_addresses }})
+
+    - name: Skip container creation due to incomplete set of options
+      fail:
+        msg: >-
+          When specifying an image fingerprint, you must also explicitly specify
+          the remote server via the 'lxd_containers_source_server' variable.
+          Note: If not specified, other required values will fallback to their default
+          values, or in the case of the image alias, omitted.
+
+  # TODO: Review this; what other combinations of values should be enforced?
+  when: >
+    lxd_containers_source_set_fingerprint is defined
+    and lxd_containers_source_set_fingerprint != ""
+    and (
+      lxd_containers_source_set_server is not defined
+      or (
+        lxd_containers_source_set_server is defined
+        and lxd_containers_source_set_server == ""
+      )
+    )
+
+
+#############################################################################
+# Container creation
+#############################################################################
+
 - name: Create containers and display the results
   block:
     - name: Create containers
@@ -21,19 +138,49 @@
           "environment.https_proxy": "{{ lxd_containers_proxy_server }}"
           "environment.ftp_proxy": "{{ lxd_containers_proxy_server }}"
         source:
-          type: image
-          mode: pull
-          server: "{{ lxd_containers_image_server }}"
-          protocol: lxd
-          alias: "{{ lxd_containers_image_source }}"
+          type: "{{ lxd_containers_source_type }}"
+          mode: "{{ lxd_containers_source_mode }}"
+
+          # Fallback to role defaults if variable is unset or empty string
+          server: "{{ lxd_containers_source_set_server | default(lxd_containers_default_source_server, true) }}"
+          protocol: "{{ lxd_containers_source_set_protocol | default(lxd_containers_default_source_protocol, true) }}"
+
+          # Drop parameter if variable is an empty string
+          alias:  "{{ lxd_containers_source_set_alias | default(omit, true) }}"
+          fingerprint: "{{ lxd_containers_source_set_fingerprint | default(omit, true) }}"
+
         # Attempt to use host or group specific profiles, fallback to standard set if not specified
         profiles: "{{ lxd_containers_profiles }}"
-        wait_for_ipv4_addresses: true
-        timeout: 600
+        wait_for_ipv4_addresses: "{{ lxd_containers_wait_for_ipv4_addresses }}"
+        timeout: "{{ lxd_containers_create_timeout }}"
       register: container_creation_results
 
+  rescue:
+
+    # Displays only when errors occur
+    - name: DEBUG | Display container creation results
+      debug:
+        var: container_creation_results
+
+    - name: Display current combination of container creation values
+      debug:
+        msg: >-
+          Current combination of container creation values:
+          (Container name: {{ inventory_hostname }})
+          (Fingerprint: {{ lxd_containers_source_set_fingerprint | default('') }}),
+          (Server: {{ lxd_containers_source_set_server | default(lxd_containers_default_source_server, true) }}),
+          (Mode: {{ lxd_containers_source_mode }}),
+          (Protocol: {{ lxd_containers_default_source_protocol }}),
+          (Type: {{ lxd_containers_source_type }}),
+          (Alias: {{ lxd_containers_source_set_alias | default('') }}),
+          (Profiles: {{ lxd_containers_profiles }}),
+          (Timeout: {{ lxd_containers_create_timeout }}),
+          (Wait for IPv4: {{ lxd_containers_wait_for_ipv4_addresses }})
+
   always:
-    - name: Display container creation results
+
+    # Only displayed when user opts to use debug display
+    - name: DEBUG | Display container creation results
       debug:
         var: container_creation_results
         verbosity: "1"

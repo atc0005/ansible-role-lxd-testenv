@@ -82,11 +82,48 @@ lxd_containers_proxy_server: ""
 # file is an empty string as the user may opt to set it at the playbook level.
 lxd_containers_add_proxy_to_etc_environment_file: true
 
-# Server listed in the Ansible module examples
-lxd_containers_image_server: "https://images.linuxcontainers.org"
+# Default value provided by module documentation
+lxd_containers_create_timeout: "600"
 
-# Defines what container image is used. Defaults to Ubuntu 16.04 LTS AMD64.
-lxd_containers_image_source: "ubuntu/xenial/amd64"
+lxd_containers_source_type: "image"
+lxd_containers_source_mode: "pull"
+
+# Provides unofficial non-Ubuntu images as well as current Ubuntu images
+# Common options include 'https://images.linuxcontainers.org' for unofficial
+# images (where aliases are provided which point to current, maintained
+# images) and 'https://cloud-images.ubuntu.com/releases' which is used to pull
+# official images, including older archived images that are useful for upgrade
+# testing
+lxd_containers_default_source_server: "https://images.linuxcontainers.org"
+
+# Use appropriate value shown from 'lxc remote list'
+# Supported options: 'lxd' and 'simplestreams'
+# Note: 'simplestreams' appears to be a safe default value
+lxd_containers_default_source_protocol: "simplestreams"
+
+# Defines an image using a "friendly" name or alias. Unless overridden,
+# defaults to latest stable Ubuntu 16.04 LTS AMD64 image
+# See https://images.linuxcontainers.org/ for supported options
+# Specify using 'distribution/release/architecture' format
+lxd_containers_default_source_alias: "ubuntu/xenial/amd64"
+
+# You must choose only one: alias or fingerprint.
+#
+# If using an image fingerprint, you should also override
+# lxd_containers_source_server (at a minimum) to provide the appropriate image
+# server URL. You may also need to override lxd_containers_source_protocol
+# if the default protocol value is not the same as is used for that remote.
+#
+# Example:
+#
+# lxd_containers_source_fingerprint: "e9a8bdfab6dc"
+# lxd_containers_source_server: "https://cloud-images.ubuntu.com/releases"
+# This provides an Ubuntu 14.04 LTS amd64 image from 20150814.
+lxd_containers_default_source_fingerprint: ""
+
+# Force task to wait for containers to receive IPv4 addresses before
+# continuing with the rest of the setup work
+lxd_containers_wait_for_ipv4_addresses: true
 
 # Assume that containers should be created when this role is used
 # unless overridden
