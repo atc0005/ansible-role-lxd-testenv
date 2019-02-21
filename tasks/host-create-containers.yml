@@ -7,6 +7,11 @@
 # https://github.com/atc0005/ansible-playbook-lxd-testenv
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
+
+#############################################################################
+# Container creation
+#############################################################################
+
 - name: Create containers and display the results
   block:
     - name: Create containers
@@ -21,19 +26,66 @@
           "environment.https_proxy": "{{ lxd_containers_proxy_server }}"
           "environment.ftp_proxy": "{{ lxd_containers_proxy_server }}"
         source:
-          type: image
-          mode: pull
-          server: "{{ lxd_containers_image_server }}"
-          protocol: lxd
-          alias: "{{ lxd_containers_image_source }}"
+          type: "{{ lxd_containers_source_type }}"
+          mode: "{{ lxd_containers_source_mode }}"
+          server: "{{ lxd_containers_source_server }}"
+          protocol: "{{ lxd_containers_source_protocol }}"
+
+          # Drop parameter if variable is not set
+          fingerprint: "{{ lxd_containers_source_fingerprint | default(omit, true) }}"
+
+          # Enable use of alias ONLY if fingerprint is empty
+          alias: >-
+            {%- if lxd_containers_source_fingerprint is defined
+              and lxd_containers_source_fingerprint == ""
+              or (
+                lxd_containers_source_fingerprint is not defined
+              )
+              or (
+                lxd_containers_source_fingerprint is defined
+                and lxd_containers_source_fingerprint == ""
+              )
+            -%}
+            {{ lxd_containers_source_alias | default(omit, true) }}
+            {%- endif -%}
+
         # Attempt to use host or group specific profiles, fallback to standard set if not specified
         profiles: "{{ lxd_containers_profiles }}"
-        wait_for_ipv4_addresses: true
-        timeout: 600
+        wait_for_ipv4_addresses: "{{ lxd_containers_wait_for_ipv4_addresses }}"
+        timeout: "{{ lxd_containers_create_timeout }}"
       register: container_creation_results
 
+  rescue:
+
+    - name: DEBUG | Display current combination of container creation values
+      debug:
+        msg: >-
+          Current combination of container creation values:
+          (Container name: {{ inventory_hostname }})
+          (Fingerprint: {{ lxd_containers_source_fingerprint | default('') }}),
+          (Server: {{ lxd_containers_source_server | default('') }}),
+          (Mode: {{ lxd_containers_source_mode | default('') }}),
+          (Protocol: {{ lxd_containers_source_protocol | default('') }}),
+          (Type: {{ lxd_containers_source_type | default('') }}),
+          (Alias: {{ lxd_containers_source_alias | default('') }}),
+          (Profiles: {{ lxd_containers_profiles | default('') }}),
+          (Timeout: {{ lxd_containers_create_timeout | default('') }}),
+          (Wait for IPv4: {{ lxd_containers_wait_for_ipv4_addresses | default('') }})
+
+    - name: DEBUG | Display container creation results
+      debug:
+        var: container_creation_results
+
+    # Use rescue block as opportunity to trigger debug output, but still mark
+    # container creation as failed so it will not be targeted for further work
+    - name: FAIL | Display container creation results
+      fail:
+        msg: "Failed to create container. See prior debug output for details."
+
   always:
-    - name: Display container creation results
+
+    # Only displayed when user opts to use debug display
+    - name: DEBUG | Display container creation results
       debug:
         var: container_creation_results
         verbosity: "1"
