@@ -12,32 +12,31 @@
     - name: Create containers
       delegate_to: localhost
       lxd_container:
-        name: "{{ item }}"
+        name: "{{ inventory_hostname }}"
         state: started
         # Allow overriding proxy server per host or group, fallback to role
         # default of empty string if not set
         config:
-          "environment.http_proxy": "{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
-          "environment.https_proxy": "{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
-          "environment.ftp_proxy": "{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
+          "environment.http_proxy": "{{ lxd_containers_proxy_server }}"
+          "environment.https_proxy": "{{ lxd_containers_proxy_server }}"
+          "environment.ftp_proxy": "{{ lxd_containers_proxy_server }}"
         source:
           type: image
           mode: pull
-          server: "{{ hostvars[item]['lxd_containers_image_server'] | default(lxd_containers_image_server) }}"
+          server: "{{ lxd_containers_image_server }}"
           protocol: lxd
-          alias: "{{ hostvars[item]['lxd_containers_image_source'] | default(lxd_containers_image_source) }}"
+          alias: "{{ lxd_containers_image_source }}"
         # Attempt to use host or group specific profiles, fallback to standard set if not specified
-        profiles: "{{ hostvars[item]['lxd_containers_profiles'] | default(lxd_containers_profiles) }}"
+        profiles: "{{ lxd_containers_profiles }}"
         wait_for_ipv4_addresses: true
         timeout: 600
       register: container_creation_results
-      with_items:
-        - "{{ groups['all'] }}"
+
   always:
     - name: Display container creation results
       debug:
         var: container_creation_results
-        verbosity: 1
+        verbosity: "1"
   # Should be overridden at the playbook level (or higher)
   when: lxd_containers_create | default(false)
   tags:

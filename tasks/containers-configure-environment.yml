@@ -9,45 +9,28 @@
 
 - name: DEBUG | Display containers configure flag for host
   debug:
-    var: hostvars[item]['lxd_containers_configure']
+    var: lxd_containers_configure
     verbosity: "2"
-  with_items:
-    - "{{ groups['all'] }}"
 
 - name: DEBUG | Display containers configure flag for role
   debug:
     var: lxd_containers_configure
     verbosity: "2"
-  with_items:
-    - "{{ groups['all'] }}"
 
 - name: Start SSH, set it to start at boot
-  delegate_to: "{{ item }}"
   service:
     name: sshd
     state: started
     enabled: yes
-  with_items:
-    - "{{ groups['all'] }}"
-  when: >
-      hostvars[item]['python_installed'] | default(false)
-      and
-      (
-        hostvars[item]['lxd_containers_configure'] | default(false)
-        or hostvars[item]['lxd_containers_configure'] is not defined
-        and lxd_containers_configure | default(false)
-      )
+  when:
+    - python_installed | default(false)
+    - lxd_containers_configure | default(false)
 
 # https://github.com/ipspace/NetOpsWorkshop/blob/2ff7984a42bf8ed0271aa8f8eaef72140f3509b8/tools/ssh-keys/get-keys.yml#L34
 # TODO: This is showing as "changed" on every run
 - name: "Update hosts file in container"
-  delegate_to: "{{ item }}"
-  # This directive forces the task to attempt execution on the first host in
-  # the current batch and then applies all results and facts to all the hosts
-  # in the same batch.
-  run_once: true
   blockinfile:
-    dest: "{{ hostvars[item]['lxd_containers_etc_hosts_file'] | default(lxd_containers_etc_hosts_file) }}"
+    dest: "{{ lxd_containers_etc_hosts_file }}"
     marker: "# {mark} This part managed by Ansible"
     # Because we're using a separate loop here with Jinja2 templating,
     # we have duplicate the checks/guard against undefined dictionary keys
@@ -59,32 +42,17 @@
       {{ hostvars[h].ansible_default_ipv4.address }} {{ h }}
       {% endif %}
       {% endfor %}
-  with_items:
-    - "{{ groups['all'] }}"
-  when: >
-    hostvars[item]['python_installed'] | default(false)
-    and
-    hostvars[item]['ansible_default_ipv4'] is defined
-    and hostvars[item]['ansible_default_ipv4']['address'] is defined
-    and
-    (
-      hostvars[item]['lxd_containers_update_hosts_file'] | default(false)
-      or hostvars[item]['lxd_containers_update_hosts_file'] is not defined
-      and lxd_containers_update_hosts_file | default(false)
-    )
-    and
-    (
-      hostvars[item]['lxd_containers_configure'] | default(false)
-      or hostvars[item]['lxd_containers_configure'] is not defined
-      and lxd_containers_configure | default(false)
-    )
+  when:
+    - python_installed | default(false)
+    - ansible_default_ipv4 is defined
+    - ansible_default_ipv4['address'] is defined
+    - lxd_containers_update_hosts_file | default(false)
+    - lxd_containers_configure | default(false)
 
 - name: DEBUG | Display hostvars proxy server value
   debug:
-    var: hostvars[item]['lxd_containers_proxy_server']
+    var: lxd_containers_proxy_server
     verbosity: "2"
-  with_items:
-    - "{{ groups['all'] }}"
 
 - name: DEBUG | Display role proxy server value
   debug:
@@ -93,10 +61,8 @@
 
 - name: DEBUG | Display hostvars env file flag value
   debug:
-    var: hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file']
+    var: lxd_containers_add_proxy_to_etc_environment_file
     verbosity: "2"
-  with_items:
-    - "{{ groups['all'] }}"
 
 - name: DEBUG | Display role env file flag value
   debug:
@@ -107,44 +73,18 @@
 # https://askubuntu.com/questions/228530/updating-http-proxy-environment-variable
 # https://askubuntu.com/questions/866161/setting-path-variable-in-etc-environment-vs-profile
 - name: "Apply proxy settings via environment file in container"
-  delegate_to: "{{ item }}"
-  run_once: true
   blockinfile:
     dest: "{{ lxd_containers_environment_file }}"
     marker: "# {mark} This part managed by Ansible"
     block: |
-      http_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
-      https_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
-      ftp_proxy="{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
-  with_items:
-    - "{{ groups['all'] }}"
-  loop_control:
-    label: >
-     {{ item }} |
-     Configure flag: "{{ hostvars[item]['lxd_containers_configure'] | default(lxd_containers_configure) }}" |
-     Add proxy flag: "{{ hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] | default(lxd_containers_add_proxy_to_etc_environment_file) }}" |
-     Proxy: "{{ hostvars[item]['lxd_containers_proxy_server'] | default(lxd_containers_proxy_server) }}"
-  when: >
-    hostvars[item]['python_installed'] | default(false)
-    and
-    (
-      hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] | default(false)
-      or hostvars[item]['lxd_containers_add_proxy_to_etc_environment_file'] is not defined
-      and lxd_containers_add_proxy_to_etc_environment_file | default(false)
-    )
-    and
-    (
-      hostvars[item]['lxd_containers_proxy_server'] is defined
-      and hostvars[item]['lxd_containers_proxy_server'] != ""
-      or hostvars[item]['lxd_containers_proxy_server'] is not defined
-      and lxd_containers_proxy_server is defined
-      and lxd_containers_proxy_server != ""
-    )
-    and
-    (
-      hostvars[item]['lxd_containers_configure'] | default(false)
-      or hostvars[item]['lxd_containers_configure'] is not defined
-      and lxd_containers_configure | default(false)
-    )
+      http_proxy="{{ lxd_containers_proxy_server }}"
+      https_proxy="{{ lxd_containers_proxy_server }}"
+      ftp_proxy="{{ lxd_containers_proxy_server }}"
+  when:
+    - python_installed | default(false)
+    - lxd_containers_add_proxy_to_etc_environment_file | default(false)
+    - lxd_containers_proxy_server is defined
+    - lxd_containers_proxy_server != ""
+    - lxd_containers_configure | default(false)
 
 ...

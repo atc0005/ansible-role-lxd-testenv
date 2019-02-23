@@ -9,6 +9,7 @@
 
 - name: "Remove container entries from hosts file on LXD host"
   delegate_to: localhost
+  run_once: true
   become: yes
   blockinfile:
     dest: "{{ lxd_containers_etc_hosts_file }}"
@@ -41,6 +42,7 @@
 # Attempt to run once after all hosts have been fact gathered
 - name: Remove container host entries from SSH client system config on host
   delegate_to: localhost
+  run_once: true
   become: yes
   blockinfile:
     dest: "{{ lxd_host_ssh_client_system_config_file }}"

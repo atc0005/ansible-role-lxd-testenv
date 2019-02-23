@@ -8,13 +8,10 @@
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
 - name: Check for Python installation
-  delegate_to: "{{ item }}"
-  raw: "test -e {{ hostvars[item]['lxd_containers_python_path'] | default(lxd_containers_python_path) }}"
+  raw: "test -e {{ lxd_containers_python_path }}"
   register: python_install_check
   failed_when: python_install_check['rc'] not in [0, 1]
   changed_when: false
-  with_items:
-    - "{{ groups['all'] }}"
   # NOTE: Do not apply conditions, run this task for all containers
   #
   # when: >
@@ -29,55 +26,25 @@
 # information that is not needed during normal role operation
 - name: DEBUG | Display all known facts about host
   debug:
-    var: hostvars[item]
+    var: hostvars[inventory_hostname]
     verbosity: "4"
-  with_items:
-    - "{{ groups['all'] }}"
 
 
 - name: DEBUG | Show python check results
   debug:
     verbosity: "2"
-    var: item
-  with_items:
-    - "{{ python_install_check['results'] }}"
-  loop_control:
-    label: >
-      {{ item['item'] }} |
-      {{ 'Python is installed' if ( item['rc'] == 0)
-          else 'Python is NOT installed'
-      }}
-  # Help prevent cascading errors if something prevented this variable from
-  # being properly registered earlier (e.g., host-specific opt-out)
-  when:
-    - python_install_check is defined
-    - python_install_check['results'] is defined
-    - "'rc' in item"
-    - "'item' in item"
+    var: python_install_check
+
 
 # Limited to containers without Python
 - name: Install Python
-  delegate_to: "{{ item['item'] }}"
-  raw: "{{ hostvars[item['item']]['python_install_command'] | default(lxd_containers_default_python_install_command) }}"
+  raw: "{{ python_install_command | default(lxd_containers_default_python_install_command) }}"
   args:
     executable: /bin/bash
-  with_items:
-    - "{{ python_install_check['results'] }}"
-  loop_control:
-    label: >
-      {{ item['item'] }} |
-      {{ 'found previously' if ( item['rc'] == 0)
-          else 'not found previously'
-      }}
   register: python_install_results
-  when: >
-    item['rc'] == 1
-    and
-    (
-      hostvars[item.item]['lxd_containers_bootstrap'] | default(false)
-      or hostvars[item.item]['lxd_containers_bootstrap'] is not defined
-      and lxd_containers_bootstrap | default(false)
-    )
+  when:
+    - python_install_check['rc'] == 1
+    - lxd_containers_bootstrap
 
 - name: DEBUG | Display Python installation results
   debug:
