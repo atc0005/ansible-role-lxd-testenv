@@ -8,31 +8,13 @@
 # https://github.com/atc0005/ansible-role-lxd-testenv
 
 - name: Install required packages
-  delegate_to: "{{ item }}"
   package:
-    name: "{{ hostvars[item]['lxd_containers_packages_required'] | default(lxd_containers_packages_required) }}"
+    name: "{{ lxd_containers_packages_required }}"
     state: present
-  with_items:
-    - "{{ groups['all'] }}"
-  loop_control:
-    label: >
-      {{ item }} |
-      Packages: {{ hostvars[item]['lxd_containers_packages_required'] | default(lxd_containers_packages_required) }}
-  when: >
-    hostvars[item]['python_installed'] | default(false)
-    and
-    (
-      hostvars[item]['lxd_containers_packages_required'] is defined
-      and hostvars[item]['lxd_containers_packages_required'] | length >0
-      or hostvars[item]['lxd_containers_packages_required'] is not defined
-      and lxd_containers_packages_required is defined
-      and lxd_containers_packages_required | length >0
-    )
-    and
-    (
-      hostvars[item]['lxd_containers_configure'] | default(false)
-      or hostvars[item]['lxd_containers_configure'] is not defined
-      and lxd_containers_configure | default(false)
-    )
+  when:
+    - python_installed | default(false)
+    - lxd_containers_packages_required is defined
+    - lxd_containers_packages_required | length >0
+    - lxd_containers_configure | default(false)
 
 ...

@@ -70,14 +70,14 @@
       {{ h }} ssh-ed25519 {{ hostvars[h]['ansible_ssh_host_key_ed25519_public'] }}
       {% endfor %}
   when:
-    # Should be overridden at the playbook level (or higher)
     - lxd_host_update_user_known_hosts_file | default(false)
 
 - name: "HOST | Add container host entries to {{ lxd_host_ssh_client_system_config_file }}"
   delegate_to: localhost
-  # Allow the file to be created if needed
+  run_once: true
   become: yes
   blockinfile:
+    # Allow the file to be created if needed
     create: yes
     dest: "{{ lxd_host_ssh_client_system_config_file }}"
     marker: "# {mark} This part managed by Ansible"
@@ -94,16 +94,14 @@
       {% endif %}
       {% endfor %}
   when:
-    # Should be overridden at the playbook level (or higher)
     - lxd_host_update_ssh_client_system_config_file | default(false)
-  # Intended to help prevent overwrites
-  run_once: true
 
 - name: "HOST | Add container host entries to {{ lxd_host_ssh_client_user_config_file }}"
   delegate_to: localhost
-  # Allow the file to be created if needed
+  run_once: true
   become: no
   blockinfile:
+    # Allow the file to be created if needed
     create: yes
     dest: "{{ lxd_host_ssh_client_user_config_file }}"
     marker: "# {mark} This part managed by Ansible"
