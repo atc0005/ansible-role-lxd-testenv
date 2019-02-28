@@ -19,7 +19,8 @@
 
 - name: Start SSH, set it to start at boot
   service:
-    name: sshd
+    # Note: Service name differs by distro. See README for details.
+    name: "{{ lxd_containers_sshd_service_name }}"
     state: started
     enabled: yes
   when:
