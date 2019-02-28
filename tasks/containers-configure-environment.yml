@@ -73,6 +73,9 @@
 
 # https://askubuntu.com/questions/228530/updating-http-proxy-environment-variable
 # https://askubuntu.com/questions/866161/setting-path-variable-in-etc-environment-vs-profile
+# https://wiki.archlinux.org/index.php/Proxy_settings#Environment_variables
+# https://unix.stackexchange.com/questions/212894/whats-the-right-format-for-the-http-proxy-environment-variable-caps-or-no-ca
+# https://askubuntu.com/questions/175172/how-do-i-configure-proxies-without-gui
 - name: "Apply proxy settings via environment file in container"
   blockinfile:
     dest: "{{ lxd_containers_environment_file }}"
@@ -81,6 +84,11 @@
       http_proxy="{{ lxd_containers_proxy_server }}"
       https_proxy="{{ lxd_containers_proxy_server }}"
       ftp_proxy="{{ lxd_containers_proxy_server }}"
+      no_proxy="localhost,127.0.0.1,localaddress,.localdomain.com"
+      HTTP_PROXY="{{ lxd_containers_proxy_server }}"
+      HTTPS_PROXY="{{ lxd_containers_proxy_server }}"
+      FTP_PROXY="{{ lxd_containers_proxy_server }}"
+      NO_PROXY="localhost,127.0.0.1,localaddress,.localdomain.com"
   when:
     - python_installed | default(false)
     - lxd_containers_add_proxy_to_etc_environment_file | default(false)
