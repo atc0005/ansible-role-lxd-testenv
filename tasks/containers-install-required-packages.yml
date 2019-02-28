@@ -16,5 +16,9 @@
     - lxd_containers_packages_required is defined
     - lxd_containers_packages_required | length >0
     - lxd_containers_configure | default(false)
+  register: lxd_containers_packages_required_installation_results
+  until: lxd_containers_packages_required_installation_results is success
+  retries: "{{lxd_containers_package_installation_retry_attempts }}"
+  delay: "{{ lxd_containers_package_installation_retry_delay }}"
 
 ...

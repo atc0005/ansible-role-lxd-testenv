@@ -139,6 +139,12 @@ lxd_containers_bootstrap: true
 # 'lxd_containers_bootstrap') already handles
 lxd_containers_configure: true
 
+# Number of package installation retry attempts
+lxd_containers_package_installation_retry_attempts: "5"
+
+# Number of seconds between retry attempts
+lxd_containers_package_installation_retry_delay: "5"
+
 # Essential packages installed in each container as part of the bootstrap
 # phase. Controlled via the 'lxd_containers_bootstrap' flag.
 lxd_containers_packages_required:
