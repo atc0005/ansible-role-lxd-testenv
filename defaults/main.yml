@@ -195,4 +195,9 @@ lxd_containers_default_python_install_command: "if [ -f /usr/bin/apt-get ]; then
 # Location of Python 2 interpreter; needed for bootstrap testing purposes
 lxd_containers_python_path: "/usr/bin/python"
 
+# The service name used to start/stop or enable/disable OpenSSH.
+# CentOS 6/7: 'sshd'
+# Ubuntu: 'ssh'
+lxd_containers_sshd_service_name: "sshd"
+
 ...
