@@ -23,14 +23,14 @@
         # default of empty string if not set
         # https://unix.stackexchange.com/questions/212894/whats-the-right-format-for-the-http-proxy-environment-variable-caps-or-no-ca
         config:
-          "environment.http_proxy": "{{ lxd_containers_proxy_server }}"
-          "environment.https_proxy": "{{ lxd_containers_proxy_server }}"
-          "environment.ftp_proxy": "{{ lxd_containers_proxy_server }}"
-          "environment.no_proxy": "localhost,127.0.0.1,localaddress,.localdomain.com"
-          "environment.HTTP_PROXY": "{{ lxd_containers_proxy_server }}"
-          "environment.HTTPS_PROXY": "{{ lxd_containers_proxy_server }}"
-          "environment.FTP_PROXY": "{{ lxd_containers_proxy_server }}"
-          "environment.NO_PROXY": "localhost,127.0.0.1,localaddress,.localdomain.com"
+          environment.http_proxy: '{{ lxd_containers_proxy_server }}'
+          environment.https_proxy: '{{ lxd_containers_proxy_server }}'
+          environment.ftp_proxy: '{{ lxd_containers_proxy_server }}'
+          environment.no_proxy: 'localhost,127.0.0.1,localaddress,.localdomain.com'
+          environment.HTTP_PROXY: '{{ lxd_containers_proxy_server }}'
+          environment.HTTPS_PROXY: '{{ lxd_containers_proxy_server }}'
+          environment.FTP_PROXY: '{{ lxd_containers_proxy_server }}'
+          environment.NO_PROXY: 'localhost,127.0.0.1,localaddress,.localdomain.com'
         source:
           type: "{{ lxd_containers_source_type }}"
           mode: "{{ lxd_containers_source_mode }}"
