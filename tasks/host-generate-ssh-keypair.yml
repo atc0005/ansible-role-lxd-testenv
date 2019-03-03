@@ -25,10 +25,8 @@
     # https://serverfault.com/questions/910071/how-to-generate-host-ssh-keys-via-ansible
     - name: Generate key for test environment container use
       delegate_to: localhost
-      # Allow to run for each host, trusting in 'creates' to prevent
-      # overwriting of existing key. This allows for a unique key per
-      # container.
-      # run_once: true
+      # Run task only once; this key is used with all test containers
+      run_once: true
       command : >
         ssh-keygen
         -q
