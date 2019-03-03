@@ -31,6 +31,13 @@
           environment.HTTPS_PROXY: '{{ lxd_containers_proxy_server }}'
           environment.FTP_PROXY: '{{ lxd_containers_proxy_server }}'
           environment.NO_PROXY: 'localhost,127.0.0.1,localaddress,.localdomain.com'
+
+        # LXD daemon connection parameters
+        url: "{{ lxd_host_https_api_url | default(lxd_host_unix_socket_path, true) }}"
+        trust_password: "{{ lxd_host_https_api_trust_password | default(omit, true) }}"
+        cert_file: "{{ lxd_host_client_cert_path | default(omit, true) }}"
+        key_file: "{{ lxd_host_client_key_path | default(omit, true) }}"
+
         source:
           type: "{{ lxd_containers_source_type }}"
           mode: "{{ lxd_containers_source_mode }}"

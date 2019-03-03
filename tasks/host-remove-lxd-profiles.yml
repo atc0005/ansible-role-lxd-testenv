@@ -17,6 +17,12 @@
     name: docker
     state: absent
 
+    # LXD daemon connection parameters
+    url: "{{ lxd_host_https_api_url | default(lxd_host_unix_socket_path, true) }}"
+    trust_password: "{{ lxd_host_https_api_trust_password | default(omit, true) }}"
+    cert_file: "{{ lxd_host_client_cert_path | default(omit, true) }}"
+    key_file: "{{ lxd_host_client_key_path | default(omit, true) }}"
+
   # Should be overridden at the playbook level (or higher)
   when:
     - lxd_host_remove_profiles | default(false)

@@ -1,0 +1,161 @@
+---
+
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://github.com/atc0005/ansible-playbook-lxd-testenv
+# https://github.com/atc0005/ansible-role-lxd-testenv
+
+# Purpose: Confirm valid location of LXD UNIX socket for later use
+
+- name: Validate known locations of LXD UNIX socket
+  block:
+
+    - name: DEBUG | HTTPS REST API URL status
+      run_once: true
+      debug:
+        msg: >-
+          HTTPS REST API url not set, assuming UNIX socket for LXD
+          connections. Beginning UNIX socket location validation ...
+
+    - name: Look for APT-based install UNIX socket
+      run_once: true
+      delegate_to: localhost
+      stat:
+        path: "{{ lxd_host_apt_install_socket_path }}"
+      register: lxd_host_apt_install_socket_path_results
+
+    - name: Look for snap-based install UNIX socket
+      run_once: true
+      delegate_to: localhost
+      stat:
+        path: "{{ lxd_host_snap_install_socket_path }}"
+      register: lxd_host_snap_install_socket_path_results
+
+    - name: Record confirmed socket path for later use
+      run_once: true
+      delegate_to: localhost
+      set_fact:
+        lxd_host_unix_socket_path: >-
+          {%- if lxd_host_apt_install_socket_path_results['stat'] is defined
+            and lxd_host_apt_install_socket_path_results['stat']['exists'] -%}
+          unix:{{ lxd_host_apt_install_socket_path }}
+          {%- elif lxd_host_snap_install_socket_path_results['stat'] is defined
+            and lxd_host_snap_install_socket_path_results['stat']['exists'] -%}
+          unix:{{ lxd_host_snap_install_socket_path }}
+          {%- endif -%}
+
+    - name: Confirm that UNIX socket was located
+      run_once: true
+      assert:
+        that:
+          - "lxd_host_unix_socket_path is defined"
+          - 'lxd_host_unix_socket_path != ""'
+        fail_msg: >-
+          ERROR: UNIX socket access not available because socket could not be
+          located at
+          {{ lxd_host_apt_install_socket_path }} or
+          {{ lxd_host_snap_install_socket_path }}.
+          Have you run sudo lxd init yet?
+        success_msg: >-
+          OK: UNIX socket found at '{{ lxd_host_unix_socket_path }}'
+          Proceeding with LXD UNIX socket access ...
+
+  # Only do this when a HTTP REST API URL has NOT been set
+  when: lxd_host_https_api_url == ""
+
+
+- name: Validate known locations of LXD client cert and key files
+  block:
+
+    - name: DEBUG | HTTPS REST API URL status
+      run_once: true
+      debug:
+        msg: >-
+          HTTPS REST API URL IS set to '{{ lxd_host_https_api_url }}', assuming
+          HTTPS REST API for LXD connections. Beginning LXD client cert and
+          key location validation ...
+
+    - name: Look for APT-based client cert
+      run_once: true
+      delegate_to: localhost
+      stat:
+        path: "{{ lxd_host_client_cert_file_apt_install_path }}"
+      register: lxd_host_client_cert_file_apt_install_path_results
+
+    - name: Look for APT-based client key
+      run_once: true
+      delegate_to: localhost
+      stat:
+        path: "{{ lxd_host_client_key_file_apt_install_path }}"
+      register: lxd_host_client_key_file_apt_install_path_results
+
+    - name: Look for snap-based client cert
+      run_once: true
+      delegate_to: localhost
+      stat:
+        path: "{{ lxd_host_client_cert_file_snap_install_path }}"
+      register: lxd_host_client_cert_file_snap_install_path_results
+
+    - name: Look for snap-based client key
+      run_once: true
+      delegate_to: localhost
+      stat:
+        path: "{{ lxd_host_client_key_file_snap_install_path }}"
+      register: lxd_host_client_key_file_snap_install_path_results
+
+    - name: Record confirmed client cert path for later use
+      run_once: true
+      delegate_to: localhost
+      set_fact:
+        lxd_host_client_cert_path: >-
+          {%- if lxd_host_client_cert_file_apt_install_path_results['stat'] is defined
+            and lxd_host_client_cert_file_apt_install_path_results['stat']['exists'] -%}
+          {{ lxd_host_client_cert_file_apt_install_path }}
+          {%- elif lxd_host_client_cert_file_snap_install_path_results['stat'] is defined
+            and lxd_host_client_cert_file_snap_install_path_results['stat']['exists'] -%}
+          {{ lxd_host_client_cert_file_snap_install_path }}
+          {%- endif -%}
+
+    - name: Record confirmed client key path for later use
+      run_once: true
+      delegate_to: localhost
+      set_fact:
+        lxd_host_client_key_path: >-
+          {%- if lxd_host_client_key_file_apt_install_path_results['stat'] is defined
+            and lxd_host_client_key_file_apt_install_path_results['stat']['exists'] -%}
+          {{ lxd_host_client_key_file_apt_install_path }}
+          {%- elif lxd_host_client_key_file_snap_install_path_results['stat'] is defined
+            and lxd_host_client_key_file_snap_install_path_results['stat']['exists'] -%}
+          {{ lxd_host_client_key_file_snap_install_path }}
+          {%- endif -%}
+
+    - name: Confirm that cert/key files are present
+      run_once: true
+      assert:
+        that:
+          - "lxd_host_client_key_path is defined"
+          - 'lxd_host_client_key_path != ""'
+          - "lxd_host_client_cert_path is defined"
+          - 'lxd_host_client_cert_path != ""'
+        fail_msg: >-
+          ERROR: HTTPS API access not available because Client certificate or
+          key file not found.  Please generate new client cert/key pair via
+          'lxc remote add local-rest-api https://127.0.0.1:8443' or check
+          paths to confirm that key file is located at
+          {{ lxd_host_client_key_file_apt_install_path }} or
+          {{ lxd_host_client_key_file_snap_install_path }}, and cert file is
+          located at {{ lxd_host_client_cert_file_apt_install_path }} or {{
+          lxd_host_client_cert_file_snap_install_path }}.
+        success_msg: >-
+          OK: Client certificate and key file found at
+          '{{ lxd_host_client_cert_path }}'
+          and
+          '{{ lxd_host_client_key_path }}'.
+          Proceeding with LXD HTTPS API connectivity ...
+
+  # Only do this when a HTTP REST API URL has been set.
+  when: lxd_host_https_api_url != ""
+
+...
