@@ -47,10 +47,6 @@
               or (
                 lxd_containers_source_fingerprint is not defined
               )
-              or (
-                lxd_containers_source_fingerprint is defined
-                and lxd_containers_source_fingerprint == ""
-              )
             -%}
             {{ lxd_containers_source_alias | default(omit, true) }}
             {%- endif -%}
