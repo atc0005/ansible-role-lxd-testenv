@@ -177,7 +177,7 @@ Current shell command for the `lxd_containers_default_python_install_command` va
 
 ```shell
 if [ -f /usr/bin/apt-get ]; then
-  apt-get install -y python;
+  apt-get install -y python python-apt;
 fi
 if [ -f /usr/bin/yum ]; then
   yum install -y python;
