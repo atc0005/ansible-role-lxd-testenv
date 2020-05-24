@@ -218,7 +218,7 @@ lxd_containers_service_group: "ansible"
 # Default state is setting up a test environment
 state: "create"
 
-lxd_containers_default_python_install_command: "if [ -f /usr/bin/apt-get ]; then apt-get install -y python; fi; if [ -f /usr/bin/yum ]; then yum install -y python; fi"
+lxd_containers_default_python_install_command: "if [ -f /usr/bin/apt-get ]; then apt-get install -y python python-apt; fi; if [ -f /usr/bin/yum ]; then yum install -y python; fi"
 
 # Location of Python 2 interpreter; needed for bootstrap testing purposes
 lxd_containers_python_path: "/usr/bin/python"
